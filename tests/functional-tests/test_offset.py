@@ -15,8 +15,8 @@ from testcases import offset_and_chunksize_types_list, \
 
 config = pytest.config
 
-WRITE_TIMEOUT = config.getoption("write_timeout")
 WAIT_TIMEOUT = config.getoption("wait_timeout")
+CHECK_TIMEOUT = config.getoption("check_timeout")
 
 HOSTS = config.getoption("host")
 

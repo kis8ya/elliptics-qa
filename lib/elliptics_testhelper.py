@@ -3,9 +3,9 @@
 import elliptics
 import random
 import pytest
+import os
 
 import utils
-from os import urandom, environ
 
 # Позиция offset'а при записи
 OffsetWriteGetter = {'BEGINNING':     lambda l: 0,
@@ -42,78 +42,85 @@ OffsetDataGetter = {'BEGINNING':     lambda l, os: random.randint(1, l - os - 1)
 
 @pytest.fixture(scope='function')
 def key_and_data():
+    """ Returns key and data (random sequence of bytes)
+    """
     data = utils.get_data()
     key = utils.get_sha1(data)
     return (key, data)
 
 @pytest.fixture(scope='function')
 def timestamp():
+    """ Returns timestamp
+    """
     timestamp = elliptics.Time.now()
     return timestamp
 
 @pytest.fixture(scope='function')
 def user_flags():
+    """ Returns randomly generated user_flags
+    """
     user_flags = random.randint(0, utils.USER_FLAGS_MAX)
     return user_flags
 
-class EllipticsTest:
-    """ Класс обеспечивает работу с elliptics'ом на уровне базовых операций.
+class EllipticsTestHelper(elliptics.Session):
+    """ This class extend elliptics.Session class with some useful (for tests) features
     """
-    errors = type("Errors", (), {
-            "WrongArguments": "Argument list too long",
-            "NotExists": "No such file or directory"
+    error_info = type("Errors", (), {
+            'WrongArguments': "Argument list too long",
+            'NotExists': "No such file or directory",
+            'TimeoutError': "Connection timed out",
+            'AddrNotExists': "No such device or address"
             })
+
+    _log_path = "/var/log/elliptics/client.log"
     
-    def __init__(self, hosts, write_timeout, wait_timeout, groups=(1,)):
-        # создаем сессию elliptics'а
-        elog = elliptics.Logger("/dev/stderr", 0)
-        node = elliptics.Node(elog)
-        node.set_timeouts(write_timeout, wait_timeout)
-        for host in hosts:
-            node.add_remote(host, 1025)
+    def __init__(self, nodes, wait_timeout, check_timeout, groups=None, config=elliptics.Config(), logging_level=0):
+        if logging_level:
+            dir_path = os.path.dirname(self._log_path)
+            if not os.path.exists(dir_path):
+                os.makedirs(dir_path)
+            elog = elliptics.Logger(self._log_path, logging_level)
+        else:
+            elog = elliptics.Logger("/dev/stderr", logging_level)
+        client_node = elliptics.Node(elog, config)
+        client_node.set_timeouts(wait_timeout, check_timeout)
+        for node in nodes:
+            client_node.add_remote(node.host, node.port)
 
-        self.es = elliptics.Session(node)
-        self.es.groups = groups
-        # запоминаем timestamp для последующих проверок
-        self.timestamp = elliptics.Time.now()
+        elliptics.Session.__init__(self, client_node)
 
-    # Базовые команды elliptics'а
-    def write_data(self, key, data, offset=0, chunk_size=0):
-        result = self.es.write_data(key, data, offset=offset, chunk_size=chunk_size)
-        result = result.get().pop()
-        return result
+        if groups is None:
+            groups = set()
+            for n in nodes:
+                groups.add(n.group)
+            groups = list(groups)
 
-    def read_data(self, key, offset=0, size=0):
-        result = self.es.read_data(key, offset=offset, size=size)
-        result = result.get().pop()
-        return result
+        self.groups = groups
+
+    # Synchronous versions for Elliptics commands
+    def write_data_sync(self, key, data, offset=0, chunk_size=0):
+        return self.write_data(key, data, offset=offset, chunk_size=chunk_size).get()
+
+    def read_data_sync(self, key, offset=0, size=0):
+        return self.read_data(key, offset=offset, size=size).get()
     
-    def write_prepare(self, key, data, offset, psize):
-        result = self.es.write_prepare(key, data, offset, psize).get().pop()
-        return result
+    def write_prepare_sync(self, key, data, offset, psize):
+        return self.write_prepare(key, data, offset, psize).get()
 
-    def write_plain(self, key, data, offset):
-        result = self.es.write_plain(key, data, offset).get().pop()
-        return result
+    def write_plain_sync(self, key, data, offset):
+        return self.write_plain(key, data, offset).get()
 
-    def write_commit(self, key, data, offset, csize):
-        result = self.es.write_commit(key, data, offset, csize).get().pop()
-        return result
+    def write_commit_sync(self, key, data, offset, csize):
+        return self.write_commit(key, data, offset, csize).get()
 
     # Методы обеспечивающие проверку корректности отработки команд elliptics'а
     def checking_inaccessibility(self, key, data_len=None):
         """ Проверяет верно ли, что данные не доступны по ключу
         """
         try:
-            result_data = str(self.es.read_data(key).data)
+            result_data = str(self._session.read_data(key).data)
         except Exception as e:
             print e.message
         else:
             print len(result_data), '/', data_len, 'bytes already accessible'
             assert utils.get_sha1(result_data) != key
-
-    def set_user_flags(self, user_flags):
-        """ Устанавливает user_flags атрибут в случайное значение
-        для команд записи
-        """
-        self.es.user_flags = user_flags
