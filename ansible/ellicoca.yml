@@ -1,0 +1,31 @@
+---
+- hosts: all
+  roles:
+    - host-preparation
+
+- hosts: elliptics
+  roles:
+    - elliptics-common
+    - elliptics-cocaine
+
+- hosts: elliptics-client
+  roles:
+    - elliptics-client
+    - build-grape
+
+- hosts: elliptics
+  tasks:
+    - name: Install Grape libs
+      shell: dpkg -i grape*deb
+
+- hosts: elliptics
+  roles:
+    - elliptics-3nodes1group
+
+- hosts: elliptics-client
+  vars:
+    test_apps:
+      - queue
+      - testerhead-cpp
+  roles:
+    - elliptics-test-app

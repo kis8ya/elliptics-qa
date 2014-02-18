@@ -1,0 +1,15 @@
+---
+- name: Install Elliptics
+  apt: pkg={{ item }}
+  with_items:
+    - elliptics={{ elliptics_version }}
+    - elliptics-client={{ elliptics_version }}
+    - eblob={{ eblob_version }}
+
+- name: Create necessary directories
+  file: path={{ item }}
+        state=directory
+  with_items:
+    - "{{ log_dir }}"
+    - "{{ data_dir }}"
+    - "{{ hist_dir }}"

@@ -1,0 +1,15 @@
+---
+- hosts: all
+  roles:
+    - host-preparation
+
+- hosts: elliptics
+  roles:
+    - elliptics-common
+    - elliptics-3nodes1group
+
+- hosts: elliptics-client
+  roles:
+    - elliptics-client
+    - elliptics-pytest
+

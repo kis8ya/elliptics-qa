@@ -1,0 +1,7 @@
+---
+- include: elliptics-setup.yml
+
+- hosts: elliptics-client
+  roles:
+    - build-cpp-test
+    - cpp-test

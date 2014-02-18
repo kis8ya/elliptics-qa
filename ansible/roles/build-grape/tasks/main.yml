@@ -1,0 +1,35 @@
+---
+- name: Install cocaine-tools
+  apt: pkg={{ item }}
+  with_items:
+    - cocaine-tools={{ cocaine_tools_version }}
+    - cocaine-framework-python={{ cocaine_framework_python_version }}
+
+- name: Clone Grape sources from git
+  git: repo=https://github.com/reverbrain/grape.git
+       dest={{ grape_src }}
+       version={{ grape_version }}
+
+- name: Install build dependencies
+  apt: pkg={{ item }}
+  with_items:
+    - devscripts
+    - debhelper
+    - cdbs
+    - build-essential
+    - cmake
+    - libboost-system-dev
+    - libboost-program-options-dev
+    - elliptics-dev={{ elliptics_version }}
+    - libcocaine-core2={{ libcocaine_version }}
+    - libcocaine-dev={{ libcocaine_version }}
+    - cocaine-framework-native={{ cocaine_framework_native_version }}
+    - cocaine-framework-native-dev={{ cocaine_framework_native_version }}
+    - libgtest-dev
+
+- name: Build Grape
+  shell: cd {{ grape_src }}; debuild -uc -us -tc -i -I
+
+- name: Copy built Grape packages onto nodes
+  shell: "scp /tmp/grape*deb {{ item }}:"
+  with_items: groups.elliptics

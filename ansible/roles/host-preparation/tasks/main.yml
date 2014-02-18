@@ -1,0 +1,6 @@
+---
+- name: Set hostname
+  shell: echo "127.0.0.1 {{ inventory_hostname }} {{ inventory_hostname_short }} localhost" > /etc/hosts; hostname {{ inventory_hostname_short }}
+
+- name: Perform 'apt-get update'
+  apt: update_cache=yes

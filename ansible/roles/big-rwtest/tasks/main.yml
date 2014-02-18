@@ -1,0 +1,8 @@
+---
+- name: Getting tests from repository
+  git: repo=git://github.com/kis8ya/elliptics-qa.git
+       version=features/new-tests
+       dest={{ repo_dir }}
+
+- name: Run test
+  shell: PYTHONPATH={{ repo_dir }}/lib:$PYTHONPATH py.test --tx={{ tx_number }}*popen --dist=each --batch_size={{ batch_size }} --batch_number={{ batch_number}} --wait_timeout={{ wait_timeout }} --check_timeout={{ check_timeout }} {% for host in groups['elliptics'] %} --node={{ host }}:1025:{{ hostvars[host]["group"] }} {% endfor %} {{ repo_dir }}/tests/big-rwtest/

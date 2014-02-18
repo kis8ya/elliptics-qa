@@ -1,0 +1,34 @@
+---
+- name: Build test application
+  script: roles/elliptics-test-app/files/test_app.sh build {{ grape_src }}
+
+- name: Prepare profile file for test application
+  copy: src=roles/elliptics-test-app/files/test_app.profile dest=/tmp
+
+- name: Prepare manifest file for test application
+  template: src=roles/elliptics-test-app/templates/test_app.conf.j2 dest=/tmp/{{ item }}.conf
+  with_items: test_apps
+
+- name: Pack and deploy test application
+  script: roles/elliptics-test-app/files/test_app.sh deploy {{ grape_src }} {{ item[0] }} {{ item[1] }}
+  with_nested: test_apps, groups.elliptics
+
+- name: Start test application
+  script: roles/elliptics-test-app/files/test_app.sh start {{ item }} {{ groups.elliptics[0] }} 1
+  with_items: test_apps
+
+- name: Ping test application
+  script: roles/elliptics-test-app/files/test_app.sh ping {{ item }} {{ groups.elliptics[0] }} 1
+  with_items: test_apps
+
+- name: Stop test application
+  script: roles/elliptics-test-app/files/test_app.sh stop {{ item }} {{ groups.elliptics[0] }} 1
+  with_items: test_apps
+
+- name: Start test application (iteration 2)
+  script: roles/elliptics-test-app/files/test_app.sh start {{ item }} {{ groups.elliptics[0] }} 1
+  with_items: test_apps
+
+- name: Ping test application (iteration 2)
+  script: roles/elliptics-test-app/files/test_app.sh ping {{ item }} {{ groups.elliptics[0] }} 1
+  with_items: test_apps

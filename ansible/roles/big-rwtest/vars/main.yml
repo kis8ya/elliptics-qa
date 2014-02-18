@@ -1,0 +1,7 @@
+---
+wait_timeout: 25
+check_timeout: 30
+batch_number: 200
+batch_size: 125
+tx_number: 40
+repo_dir: /root/elliptics-qa

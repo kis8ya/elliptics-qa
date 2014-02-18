@@ -1,0 +1,39 @@
+{
+    "version": 2,
+    "locator": {
+        "port": 10056
+    },
+    "paths": {
+        "plugins": "/usr/lib/cocaine",
+        "runtime": "{{ cocaine_runtime_dir }}",
+        "spool": "{{ cocaine_spool_dir }}"
+    },
+    "services": {
+        "logging": {
+            "type": "logging"
+        },
+        "storage": {
+            "type": "storage"
+        }
+    },
+    "storages": {
+        "core": {
+            "type": "elliptics",
+            "args": {
+                "nodes": {
+                    {% for host in groups['elliptics'] %}
+                        {{ '"' ~ host ~ '": 1025' }}
+                        {%- if not loop.last -%},{% endif -%}
+                    {% endfor %}
+                },
+                "groups": [1],
+                "verbosity": 1
+            }
+        }
+    },
+    "loggers": {
+        "tools": {
+            "type": "stdout"
+        }
+    }
+}

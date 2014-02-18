@@ -1,0 +1,22 @@
+daemon = 1
+log = {{ log_dir }}/elliptics.log
+group = {{ group }}
+history = {{ hist_dir }}
+join = 1
+addr = {{ ansible_eth0.ipv4.address }}:1025:2
+remote ={%- for host in groups[elliptics] %}
+ {{host}}:1025:2
+{%- endfor %}
+
+cache_size = 20971520
+auth_cookie = ellicoca
+io_thread_num = 8
+net_thread_num = 4
+nonblocking_io_thread_num = 8
+
+{% if cocaine_config is defined %}
+ srw_config = {{ cocaine_config }}
+{% endif %}
+backend = blob
+data = {{ data_dir }}
+blob_size = 2G

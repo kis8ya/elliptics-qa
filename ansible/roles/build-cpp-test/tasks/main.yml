@@ -1,0 +1,23 @@
+---
+- name: Install dependencies
+  apt: pkg={{ item }} state=latest force=yes
+  with_items:
+    - elliptics-dev
+    - cmake
+    - build-essential
+    - libboost-iostreams-dev
+    - libboost-program-options-dev
+    - libboost-python-dev
+    - libboost-system-dev
+    - libboost-thread-dev
+    - libboost-filesystem-dev
+    - libmsgpack-dev
+
+- name: Clone repository
+  git: repo=https://github.com/euroelessar/elliptics.git dest=/root/elliptics
+
+- name: Build test
+  shell: cd /root/elliptics/tests/remotes && cmake . && make
+
+- name: Move test
+  shell: mv /root/elliptics/tests/remotes/dnet_cpp_test /root

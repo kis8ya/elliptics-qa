@@ -1,0 +1,13 @@
+---
+- name: Install debian packages
+  apt: pkg={{ item }}
+  with_items:
+    - python-pip
+    - wondershaper
+
+- name: Install Python packages
+  pip: name={{ item }} use_mirrors=no
+  with_items:
+    - pytest
+    - pytest-xdist
+    - pyhamcrest

@@ -1,0 +1,12 @@
+---
+- name: Create Elliptics config file
+  template: src=roles/elliptics-3nodes1group/templates/elliptics.conf.j2 dest={{ config }}
+
+- name: Start Elliptics daemon
+  command: dnet_ioserv -c {{ config }}
+
+- name: Wait for Elliptics to start up
+  pause: seconds=10
+
+- name: Ensure Elliptics is running
+  shell: ps ax | grep [d]net_ioserv

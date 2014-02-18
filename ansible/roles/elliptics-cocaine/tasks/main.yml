@@ -1,0 +1,20 @@
+---
+- name: Install Cocaine
+  apt: pkg={{ item }} force=yes
+  with_items:
+    - libcocaine-core2={{ libcocaine_version }}
+    - cocaine-tools={{ cocaine_tools_version }}
+    - cocaine-framework-python={{ cocaine_framework_python_version }}
+    - cocaine-framework-native={{ cocaine_framework_native_version }}
+    - cocaine-framework-native-dev={{ cocaine_framework_native_version }}
+    - libcocaine-plugin-elliptics={{ elliptics_version }}
+
+- name: Deploy Cocaine config
+  template: src=roles/elliptics-cocaine/templates/cocaine_config.json.j2 dest={{ cocaine_config }}
+
+- name: Create necessary directories
+  file: path={{ item }}
+        state=directory
+  with_items:
+    - "{{ cocaine_runtime_dir }}"
+    - "{{ cocaine_spool_dir }}"

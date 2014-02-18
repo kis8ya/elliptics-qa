@@ -1,0 +1,6 @@
+---
+- include: elliptics-setup.yml
+
+- hosts: elliptics-client
+  roles:
+    - timeouts-tests

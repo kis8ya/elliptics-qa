@@ -1,0 +1,5 @@
+---
+check_timeout: 30
+repo_dir: /root/elliptics-qa
+testgroup: readtest or offsettest
+wait_timeout: 25
