@@ -24,17 +24,19 @@ def get_instances_cfg(instances_params, base_names):
     """
     clients_conf = _get_cfg(base_names['client'],
                             instances_params["clients"]["flavor"],
-                            instances_params["clients"]["count"])
+                            instances_params["clients"]["count"],
+                            instances_params["clients"]["image"])
     servers_conf = _get_cfg(base_names['server'],
                             instances_params["servers"]["flavor"],
-                            instances_params["servers"]["count"])
+                            instances_params["servers"]["count"],
+                            instances_params["servers"]["image"])
 
     return {"servers": [clients_conf, servers_conf]}
 
-def _get_cfg(name, flavor, count):
+def _get_cfg(name, flavor, count, image):
     return {
         "name": name,
-        "image_name": "elliptics",
+        "image_name": image,
         "key_name": "",
         "flavor_name": flavor,
         "max_count": count,

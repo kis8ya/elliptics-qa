@@ -39,12 +39,12 @@ class TestRunner(object):
                           'elliptics_stop': "elliptics-stop"}
 
         if self.testsuite_params.get("_branch"):
-            branch = self.testsuite_params["_branch"]
+            self._branch = self.testsuite_params["_branch"]
         else:
-            branch = "testing"
+            self._branch = "testing"
 
-        self.instances_names = {'client': "elliptics-{0}-client".format(branch),
-                                'server': "elliptics-{0}-server".format(branch)}
+        self.instances_names = {'client': "elliptics-{0}-client".format(self._branch),
+                                'server': "elliptics-{0}-server".format(self._branch)}
 
         self.prepare_base_environment(config.option)
 
@@ -103,8 +103,12 @@ class TestRunner(object):
     def collect_instances_params(self):
         """ Collects information about clients and servers
         """
-        self.instances_params = {"clients": {"count": 0, "flavor": None},
-                                 "servers": {"count": 0, "flavor": None}}
+        if self._branch == "stable":
+            image = "elliptics-lts"
+        elif self._branch == "testing":
+            image = "elliptics"
+        self.instances_params = {"clients": {"count": 0, "flavor": None, "image": image},
+                                 "servers": {"count": 0, "flavor": None, "image": image}}
         for test_cfg in self.tests.values():
             test_env = test_cfg["test_env_cfg"]
             for instance_type in ["clients", "servers"]:

@@ -13,9 +13,9 @@
 
 - hosts: all
   roles:
-    - {role: install-elliptics-local-packages, when: packages_dir is defined}
+    - {role: install-elliptics-from-debs, when: packages_dir is defined}
 
-    - {role: install-elliptics-packages, when: packages_dir is not defined}
+    - {role: install-elliptics-from-repo, when: packages_dir is not defined}
 
 - hosts: servers
   tasks:

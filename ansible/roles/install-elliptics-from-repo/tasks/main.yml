@@ -1,0 +1,9 @@
+---
+- name: Install Elliptics packages
+  shell: >
+    apt-get
+    install
+    --assume-yes
+    elliptics={{ elliptics_version }}
+    elliptics-client={{ elliptics_version }}
+    eblob={{ eblob_version }}

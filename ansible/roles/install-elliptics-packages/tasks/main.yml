@@ -1,7 +1,0 @@
----
-- name: Install Elliptics packages
-  apt: pkg={{ item }}
-  with_items:
-    - elliptics={{ elliptics_version }}
-    - elliptics-client={{ elliptics_version }}
-    - eblob={{ eblob_version }}
