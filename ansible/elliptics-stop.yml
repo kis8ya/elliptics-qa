@@ -3,12 +3,12 @@
   tasks:
     - name: Getting process id
       shell: pgrep dnet_ioserv
-      register: pid
+      register: pgrep
 
     - name: Stop Elliptics daemon
       shell: pkill dnet_ioserv
 
     - name: Wait for Elliptics to stop
-      shell: while [ -e /proc/{{ pid.stdout }} ]; do sleep 0.1; done
+      shell: while [ -e /proc/{{ pgrep.stdout }} ]; do sleep 0.1; done
       async: 45
       poll: 5
