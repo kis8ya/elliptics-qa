@@ -36,7 +36,7 @@ apt_preserve_sources_list: true
     def post(self, url, data):
         headers = {'Content-Type': "application/json",
                    'Accept': "application/json"}
-        if 'token_id' in dir(self):
+        if hasattr(self, 'token_id'):
             headers['X-Auth-Project-Id'] = self.tenant_name
             headers['X-Auth-Token'] = self.token_id
 
