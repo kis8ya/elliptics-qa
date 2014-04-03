@@ -5,11 +5,13 @@ import glob
 import json
 import re
 import copy
+import requests
 
 import ansible_manager
 import instances_manager
 
 def pytest_addoption(parser):
+    parser.addoption('--branch', type="string", action="store", dest="branch", default="master")
     parser.addoption('--testsuite-params', type="string", action="store", dest="testsuite_params", default="{}")
     parser.addoption('--repo-dir', type="string", action="store", dest="repo_dir", default=None)
     parser.addoption('--packages-dir', type="string", action="store", dest="pkgs_dir", default=None)
@@ -38,13 +40,23 @@ class TestRunner(object):
                           'elliptics_start': "elliptics-start",
                           'elliptics_stop': "elliptics-stop"}
 
-        if self.testsuite_params.get("_branch"):
-            self._branch = self.testsuite_params["_branch"]
+        if config.option.branch.find('/') != -1:
+            # get pull request number (pull/#NUMBER/merge)
+            pr_number = config.option.branch.split('/')[1]
+            url = "https://api.github.com/repos/reverbrain/elliptics/pulls/{0}".format(pr_number)
+            r = requests.get(url)
+            pr_info = r.json(object_hook=self._decode_value)
+            self.branch = pr_info["base"]["ref"]
         else:
-            self._branch = "testing"
+            self.branch = config.option.branch
 
-        self.instances_names = {'client': "elliptics-{0}-client".format(self._branch),
-                                'server': "elliptics-{0}-server".format(self._branch)}
+        if self.branch == "master":
+            self.branch = "testing"
+        elif self.branch == "lts":
+            self.branch = "stable"
+
+        self.instances_names = {'client': "elliptics-{0}-client".format(self.branch),
+                                'server': "elliptics-{0}-server".format(self.branch)}
 
         self.prepare_base_environment(config.option)
 
@@ -103,9 +115,9 @@ class TestRunner(object):
     def collect_instances_params(self):
         """ Collects information about clients and servers
         """
-        if self._branch == "stable":
+        if self.branch == "stable":
             image = "elliptics-lts"
-        elif self._branch == "testing":
+        elif self.branch == "testing":
             image = "elliptics"
         self.instances_params = {"clients": {"count": 0, "flavor": None, "image": image},
                                  "servers": {"count": 0, "flavor": None, "image": image}}
@@ -150,6 +162,14 @@ class TestRunner(object):
         if self.testsuite_params.get("_global"):
             ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
                                         params=self.testsuite_params["_global"])
+
+        if self.branch == "testing":
+            config_format = "json"
+        elif self.branch == "stable":
+            config_format = "conf"
+        params = {"elliptics_config": "templates/elliptics.{0}.j2".format(config_format)}
+        ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
+                                    params=params)
 
         for name, cfg in self.tests.items():
             groups = ansible_manager._get_groups_names(name)

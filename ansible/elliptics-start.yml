@@ -2,7 +2,7 @@
 - hosts: servers
   tasks:
     - name: Create Elliptics config file
-      template: src=templates/elliptics.conf.j2 dest={{ config }}
+      template: src={{ elliptics_config }} dest={{ config }}
 
     - name: Start Elliptics daemon
       command: dnet_ioserv -c {{ config }}
