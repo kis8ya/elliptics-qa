@@ -10,4 +10,4 @@
     {% for host in groups['servers'] %}
     --node={{ host }}:1025:{{ hostvars[host]["group"] }}
     {% endfor %}
-    {{ remote_repo_dir }}/tests/timeouts/
+    {{ remote_repo_dir }}/tests/timeouts-tests/

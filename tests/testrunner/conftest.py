@@ -40,6 +40,7 @@ class TestRunner(object):
                           'elliptics_start': "elliptics-start",
                           'elliptics_stop': "elliptics-stop"}
 
+        # Check target branch (master/lts)
         if config.option.branch.find('/') != -1:
             # get pull request number (pull/#NUMBER/merge)
             pr_number = config.option.branch.split('/')[1]
@@ -65,7 +66,6 @@ class TestRunner(object):
         inventory = self._get_inventory_path(name)
         ansible_manager.run_playbook(playbook, inventory)
         
-    # pytest hooks
     def pytest_runtest_setup(self, item):
         self.test_name = re.split("[\[\]]", item.name)[1]
 
@@ -82,7 +82,6 @@ class TestRunner(object):
     def pytest_runtest_teardown(self, item):
         ansible_manager.run_playbook(playbook=self._abspath(self.playbooks['elliptics_stop']),
                                      inventory=self._get_inventory_path(self.test_name))
-    #/pytest hooks
 
     def prepare_base_environment(self, option):
         """ Prepares base test environment
