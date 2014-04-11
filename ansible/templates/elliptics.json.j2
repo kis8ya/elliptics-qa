@@ -1,16 +1,7 @@
 {
   "loggers": {
-    "type": "files",
-    "level": 4,
-    "root": [
-      {
-        "sink": {
-          "type": "files",
-          "path": "{{ log_dir }}/elliptics.log",
-          "autoflush": true
-        }
-      }
-    ]
+    "type": "{{ log_dir }}/elliptics.log",
+    "level": 4
   },
   "options": {
     "join": 1,
