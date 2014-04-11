@@ -160,6 +160,7 @@ def install_elliptics_packages(instances_params):
 def prepare_base_environment(branch):
     """ Prepares base test environment
     """
+    print("##teamcity[blockOpened name='PREPARE TEST ENVIRONMENT']")
     collect_tests(args.tag)
 
     global instances_names
@@ -172,6 +173,8 @@ def prepare_base_environment(branch):
     prepare_ansible_test_files(branch)
     instances_manager.create(instances_cfg)
     install_elliptics_packages(instances_params)
+
+    print("##teamcity[blockClosed name='PREPARE TEST ENVIRONMENT']")
 
 def collect_tests(tags):
     """Collects information about tests to run

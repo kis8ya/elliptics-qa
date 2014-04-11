@@ -28,7 +28,9 @@ def update_vars(vars_path, params):
 
 def run_playbook(playbook, inventory=None):
     cmd = "ansible-playbook -v -i {0} {1}.yml".format(inventory, playbook)
-    print("DEBUG: {0}".format(cmd))
+    tc_info = "ANSIBLE: {0}({1})".format(os.path.basename(playbook),
+                                         os.path.basename(inventory))
+    print("##teamcity[blockOpened name='{0}']".format(tc_info))
 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
 
@@ -38,6 +40,8 @@ def run_playbook(playbook, inventory=None):
     p.wait()
     if p.returncode:
         raise RuntimeError("Playbook {0} failed (exit code: {1})".format(playbook, p.returncode))
+
+    print("##teamcity[blockClosed name='{0}']".format(tc_info))
 
 def generate_inventory_file(inventory_path, clients_count, servers_per_group, groups, instances_names):
     inventory_host_record_template = '{0}.i.fog.yandex.net ansible_ssh_user=root'
