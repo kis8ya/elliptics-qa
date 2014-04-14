@@ -194,10 +194,8 @@ def collect_tests(tags):
                 tests[test_name] = cfg
 
 def run(name):
-    opts = "-v -d --teamcity --tx ssh=root@{0}.i.fog.yandex.net --rsyncdir th/elliptics_testhelper.py --rsyncdir th/utils.py --rsyncdir tests/{1}/ tests/{1}/"
+    opts = '-d --teamcity --tx ssh="{0}.i.fog.yandex.net -l root -q" --rsyncdir th/elliptics_testhelper.py --rsyncdir th/utils.py --rsyncdir tests/{1}/ tests/{1}/'
     opts = opts.format(instances_names['client'], tests[name]["dir"])
-    print("running py.test")
-    print(opts)
     pytest.main(opts)
 
     # playbook = _abspath(tests[name]["playbook"])
@@ -232,7 +230,6 @@ def setup(test_name):
     pytest_config.set("pytest", "addopts", opts)
     with open(os.path.join(tests_dir, "pytest.ini"), "w") as config_file:
         pytest_config.write(config_file)
-    print(open(os.path.join(tests_dir, "pytest.ini")).read())
 
 def teardown():
     ansible_manager.run_playbook(playbook=_abspath("elliptics-stop"),
