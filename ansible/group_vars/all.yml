@@ -8,6 +8,7 @@ log_dir: /var/log/elliptics
 data_dir: /opt/elliptics
 hist_dir: /tmp/history
 config: /etc/elliptics.conf
+blob_size: 2G
 
 # Test paramaters
 check_timeout: 30

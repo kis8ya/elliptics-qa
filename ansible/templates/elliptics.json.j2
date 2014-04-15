@@ -32,7 +32,7 @@
       {% if cocaine_config is defined %}
         "srw_config": "{{ cocaine_config }}",
       {% endif %}
-      "blob_size": "2G"
+      "blob_size": "{{ blob_size }}"
     }
   ]
 }
