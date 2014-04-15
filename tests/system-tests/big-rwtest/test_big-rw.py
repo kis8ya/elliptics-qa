@@ -36,7 +36,7 @@ def put_keys(request):
         for j in xrange(BATCH_SIZE):
             size = random.randint(MIN_SIZE, MAX_SIZE)
             key, data = get_key_and_data(size, randomize_len=False)
-            elliptics_id = elliptics.Id(key)
+            elliptics_id = s.transform(key)
             ids.append(elliptics_id)
             result = s.write_data(elliptics_id, data)
             results.append(result)
@@ -50,8 +50,8 @@ def test_elliptics(put_keys):
         for result in s.bulk_read(ids):
             data = str(result.data)
             elliptics_id = result.id
-            sha1 = get_sha1(data)
-            actual_elliptics_id = s.transform(elliptics.Id(sha1))
+            actual_elliptics_id = s.transform(get_sha1(data))
+#            actual_elliptics_id = s.transform(elliptics.Id(sha1))
             if elliptics_id != actual_elliptics_id:
                 failures[sha1].append("Corrupted data")
             if result.user_flags != 0:

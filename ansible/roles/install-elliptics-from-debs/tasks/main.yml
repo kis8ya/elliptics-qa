@@ -12,3 +12,11 @@
 
 - name: Install elliptics packages dependencies
   shell: apt-get --fix-broken --assume-yes install
+
+#TODO: remove those two duplicated tasks
+# They were added 'cos there is a package from master branch in testing/stable deb repo
+- name: Install elliptics packages
+  shell: dpkg --force-depends --install {{ remote_packages_dir }}/*.deb
+
+- name: Install elliptics packages dependencies
+  shell: apt-get --fix-broken --assume-yes install
