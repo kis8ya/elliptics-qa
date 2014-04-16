@@ -1,0 +1,18 @@
+---
+- hosts: 127.0.0.1
+  tasks:
+    - name: Remove logs directory 
+      local_action: file path=/tmp/logs state=absent
+
+    - name: Make directory for logs
+      local_action: file path=/tmp/logs state=directory
+
+- hosts: servers
+  tasks:
+    - name: Copy logs
+      local_action: command scp {{ ansible_eth0.ipv4.address }}:{{ log_dir }}/elliptics.log /tmp/logs/{{ ansible_hostname }}.log
+
+- hosts: 127.0.0.1
+  tasks:
+    - name: Create archive
+      local_action: command zip -r /tmp/logs/logs.zip /tmp/logs/

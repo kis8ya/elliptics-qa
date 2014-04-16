@@ -264,3 +264,7 @@ if __name__ == "__main__":
         setup(test_name)
         run(test_name)
         teardown()
+
+    # collect logs
+    ansible_manager.run_playbook(_abspath("collect-logs"),
+                                 _get_inventory_path("test-env-prepare"))

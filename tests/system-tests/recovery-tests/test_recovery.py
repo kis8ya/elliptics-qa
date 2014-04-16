@@ -98,9 +98,7 @@ def test_merge(write_data):
     keys, bad_keys = write_data
 
     # dnet_recovery merge
-    remote_opts = ["--remote={0}:{1}:2".format(n.host, n.port) for n in nodes]
-    remote_opts = ' '.join(remote_opts)
-    cmd = "dnet_recovery {0} merge".format(remote_opts)
+    cmd = "dnet_recovery --remote={0}:{1}:2 merge".format(nodes[0].host, nodes[0].port)
     print(cmd)
     output = subprocess.check_output(shlex.split(cmd))
     print(output)
