@@ -57,7 +57,7 @@ def write_data():
     node_to_drop = 1
     client.drop_node(nodes[node_to_drop])
 
-    s = 61
+    s = 90
     print("Waiting for {0} seconds to update client's route list".format(s))
     time.sleep(s)
 
@@ -92,6 +92,9 @@ def write_data():
 
 @pytest.mark.timeout(3600)
 def test_merge(write_data):
+    """Testing that execution of 'dnet_recovery merge' command will be successful and
+    after merge all keys will belong to proper nodes
+    """
     keys, bad_keys = write_data
 
     # dnet_recovery merge
