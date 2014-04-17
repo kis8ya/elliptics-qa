@@ -4,10 +4,15 @@ import time
 import subprocess
 import shlex
 import sys
+import random
+
+from collections import defaultdict
 
 import elliptics
 
 import elliptics_testhelper as et
+
+from utils import MB
 
 class EllipticsTestHelper(et.EllipticsTestHelper):
     DROP_RULE = "INPUT --proto tcp --destination-port {port} --jump DROP"
@@ -30,6 +35,9 @@ class EllipticsTestHelper(et.EllipticsTestHelper):
                                                               rule=rule)
         subprocess.call(shlex.split(cmd))
 
+nodes = EllipticsTestHelper.get_nodes_from_args(pytest.config.getoption("node"))
+client = EllipticsTestHelper(nodes=nodes, wait_timeout=25, check_timeout=30)
+
 class RingPartitioning(object):
     def __init__(self, client):
         self.address_ranges = {}
@@ -43,18 +51,14 @@ class RingPartitioning(object):
     def get_hostname_by_id(self, elliptics_id):
         for hostname, address_ranges in self.address_ranges.items():
             for r in address_ranges:
-                if elliptics_id >= r[0] and \
-                   elliptics_id < r[1]:
+                if r[0] <= elliptics_id < r[1]:
                     return hostname
 
-nodes = et.EllipticsTestHelper.get_nodes_from_args(pytest.config.getoption("node"))
-client = EllipticsTestHelper(nodes=nodes, wait_timeout=25, check_timeout=30)
-
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def write_data():
     full_ring_partitioning = RingPartitioning(client)
 
-    node_to_drop = 1
+    node_to_drop = random.randint(0, len(nodes) - 1)
     client.drop_node(nodes[node_to_drop])
 
     s = 90
@@ -64,38 +68,42 @@ def write_data():
     new_ring_partitioning = RingPartitioning(client)
 
     key_count = pytest.config.getoption("files_number")
-    keys = []
-    bad_keys = []
+    good_keys = defaultdict(list)
+    bad_keys = defaultdict(list)
     data_size = 0
     for i in xrange(key_count):
         key, data = et.key_and_data()
-        keys.append(key)
         elliptics_id =  client.transform(key)
 
         client.write_data_sync(key, data)
 
-        if new_ring_partitioning.get_hostname_by_id(elliptics_id) != \
-           full_ring_partitioning.get_hostname_by_id(elliptics_id):
-            bad_keys.append(key)
+        current_host = new_ring_partitioning.get_hostname_by_id(elliptics_id)
+        proper_host = full_ring_partitioning.get_hostname_by_id(elliptics_id)
+        if current_host == proper_host:
+            good_keys[current_host].append(key)
+        else:
+            bad_keys[current_host].append(key)
 
         data_size += len(data)
         sys.stdout.write("\r{0}/{1}".format(i + 1, key_count))
         sys.stdout.flush()
 
-    print("\nDONE: {0}/{1} bad keys\ndata size: {2} MB".format(len(bad_keys), key_count, data_size / (1 << 20)))
+    bad_key_count = sum([len(v) for v in bad_keys.values()])
+    print("\nDEBUG: with droped {0} node there are {0}/{1} bad keys\ndata size: {2} MB".format(
+            node_to_drop, bad_key_count, key_count, data_size / MB))
 
     client.resume_node(nodes[node_to_drop])
     print("\nWaiting for {0} seconds to update client's route list".format(s))
     time.sleep(s)
 
-    return keys, bad_keys
+    return good_keys, bad_keys
 
 @pytest.mark.timeout(3600)
 def test_merge(write_data):
     """Testing that execution of 'dnet_recovery merge' command will be successful and
     after merge all keys will belong to proper nodes
     """
-    keys, bad_keys = write_data
+    good_keys, bad_keys = write_data
 
     # dnet_recovery merge
     cmd = "dnet_recovery --remote={0}:{1}:2 merge".format(nodes[0].host, nodes[0].port)
@@ -104,8 +112,11 @@ def test_merge(write_data):
     print(output)
 
     # check keys and data
+    good_keys_list = [k for v in good_keys.values() for k in v]
+    bad_keys_list = [k for v in bad_keys.values() for k in v]
+    print("DEBUG: {0}".format(len(good_keys_list + bad_keys_list)))
     bad_key_count = 0
-    for k in keys:
+    for k in good_keys_list + bad_keys_list:
         try:
             data = client.read_data_sync(k).pop().data
 

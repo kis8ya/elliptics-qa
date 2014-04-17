@@ -79,7 +79,7 @@ class EllipticsTestHelper(elliptics.Session):
     _log_path = "/var/log/elliptics/client.log"
     
     def __init__(self, nodes, wait_timeout, check_timeout,
-                 groups=None, config=elliptics.Config(), logging_level=0):
+                 groups=None, config=elliptics.Config(), logging_level=4):
         if logging_level:
             dir_path = os.path.dirname(self._log_path)
             if not os.path.exists(dir_path):

@@ -194,7 +194,7 @@ def collect_tests(tags):
                 tests[test_name] = cfg
 
 def run(name):
-    opts = '-d --teamcity --tx ssh="{0}.i.fog.yandex.net -l root -q" --rsyncdir th/elliptics_testhelper.py --rsyncdir th/utils.py --rsyncdir tests/{1}/ tests/{1}/'
+    opts = '-d --teamcity --tx ssh="{0}.i.fog.yandex.net -l root -q" --rsyncdir lib/elliptics_testhelper.py --rsyncdir lib/utils.py --rsyncdir tests/{1}/ tests/{1}/'
     opts = opts.format(instances_names['client'], tests[name]["dir"])
     pytest.main(opts)
 

@@ -9,5 +9,11 @@
 
 - hosts: servers
   tasks:
-    - name: Copy logs
+    - name: Copy servers logs
       local_action: command scp root@{{ ansible_eth0.ipv4.address }}:{{ log_dir }}/elliptics.log /tmp/logs/{{ ansible_hostname }}.log
+
+- hosts: clients
+  tasks:
+    - name: Copy clients logs
+      local_action: command scp root@{{ ansible_eth0.ipv4.address }}:{{ log_dir }}/client.log /tmp/logs/{{ ansible_hostname }}.log
+      ignore_errors: yes
