@@ -7,8 +7,21 @@ for f in session.get_flavors_list():
     flavors[f['name']] = f['ram']
 
 def create(instances_cfg):
-#    session.create_instances(instances_cfg)
-    session.rebuild_instances(instances_cfg)
+    instances = []
+    for instance_cfg in instances_cfg['servers']:
+        instances += openstack.utils.get_instances_names_from_conf(instance_cfg)
+
+    for i in instances:
+        if session.get_instance_info(i) is None:
+            session.delete_instances(instances_cfg)
+            session.create_instances(instances_cfg)
+            break
+    else:
+        try:
+            session.rebuild_instances(instances_cfg)
+        except openstack.utils.ApiRequestError:
+            session.delete_instances(instances_cfg)
+            session.create_instances(instances_cfg)
 
 def delete(instances_cfg):
     session.delete_instances(instances_cfg)
