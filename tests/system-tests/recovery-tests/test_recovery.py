@@ -17,6 +17,9 @@ import elliptics_testhelper as et
 from utils import MB
 
 class EllipticsTestHelper(et.EllipticsTestHelper):
+    def read_data_from_groups_sync(self, key, groups, offset=0):
+        return self.read_data_from_groups(key, groups=groups, offset=offset).get()
+    
     DROP_RULES = ["INPUT --proto tcp --destination-port {port} --jump DROP",
                   "OUTPUT --proto tcp --destination-port {port} --jump DROP",
                   "OUTPUT --proto tcp --source-port {port} --jump DROP"]
@@ -68,7 +71,17 @@ def drop_nodes(number):
         client.drop_node(n)
 
     return nodes_to_drop
-    
+
+def drop_groups(group_list):
+    groups_to_drop = {}
+    for g in group_list:
+        groups_to_drop[g] = [n for n in nodes if n.group == g]
+
+    for n in [i for v in groups_to_drop.values() for i in v]:
+        client.drop_node(n)
+
+    return groups_to_drop
+
 def write_data_when_dropped(nodes_number):
     full_ring_partitioning = RingPartitioning(client)
 
@@ -233,3 +246,74 @@ def test_merge_add_two_nodes(write_data_when_two_dropped):
 
     assert not bad_key_count, "There are {0} bad keys after merge (there were {1} before merge)".format(bad_key_count, len(bad_keys))
 
+@pytest.fixture(scope='function')
+def write_when_groups_dropped():
+    groups_to_drop = random.sample(client.groups, 2)
+    dropped_groups = drop_groups(groups_to_drop)
+
+    wait_time = 30
+    wait_count = 5
+    print("Waiting for {0} seconds to update client's route list".format(wait_count * wait_time))
+    for i in xrange(wait_count):
+        time.sleep(wait_time)
+        client.routes.addresses()
+
+    key_count = pytest.config.getoption("files_number")
+    key_list = []
+    for i in xrange(key_count):
+        key, data = et.key_and_data()
+
+        client.write_data_sync(key, data)
+        key_list.append(key)
+
+        sys.stdout.write("\r{0}/{1}".format(i + 1, key_count))
+        sys.stdout.flush()
+
+    for n in [i for v in dropped_groups.values() for i in v]:
+        client.resume_node(n)
+    print("\nWaiting for {0} seconds to update client's route list".format(wait_count * wait_time))
+    time.sleep(wait_count * wait_time)
+
+    return key_list, dropped_groups
+
+@pytest.mark.dc
+@pytest.mark.timeout(3600)
+def test_dc(write_when_groups_dropped):
+    key_list, dropped_groups = write_when_groups_dropped
+    bad_groups = [int(g) for g in dropped_groups.keys()]
+
+    print(dropped_groups)
+    print(random.sample(key_list, 5))
+
+    # check that keys are not accessible in "dropped" groups
+    for k in key_list:
+        assert_that(calling(client.read_data_from_groups_sync).with_args(k, bad_groups),
+                    raises(elliptics.NotFoundError))
+
+    recovered_groups = []
+    for g, node_list in dropped_groups.items():
+        group = int(g)
+        for node in node_list:
+            cmd = ["dnet_recovery",
+                   "--remote", "{0}:{1}:2".format(node.host, node.port),
+                   "dc"]
+            print(cmd)
+            subprocess.call(cmd)
+
+        bad_groups.remove(group)
+        recovered_groups.append(group)
+        
+        # check that keys are not accessible in "dropped" groups
+        for k in key_list:
+            assert_that(calling(client.read_data_from_groups_sync).with_args(k, bad_groups),
+                        raises(elliptics.NotFoundError))
+
+        # check that keys are accessible in "recovered" groups
+        for k in key_list:
+            client.read_data_from_groups_sync(k, recovered_groups)
+
+    # check all keys
+    for k in all_keys:
+        for g in client.groups:
+            data = client.read_data_from_groups_sync(k, [g]).pop().data
+            assert_that(k, equal_to(et.utils.get_sha1(data)))

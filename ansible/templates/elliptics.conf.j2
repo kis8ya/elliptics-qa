@@ -4,7 +4,7 @@ group = {{ group }}
 history = {{ hist_dir }}
 join = 1
 addr = {{ ansible_eth0.ipv4.address }}:1025:2
-remote ={%- for host in groups[servers_group] %}
+remote ={%- for host in groups['servers'] %}
  {{host}}:1025:2
 {%- endfor %}
 

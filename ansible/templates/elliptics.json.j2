@@ -7,7 +7,7 @@
     "join": 1,
     "group": {{ group }},
     "remote": [
-      {% for host in groups[servers_group] %}
+      {% for host in groups['servers'] %}
         "{{ host }}:1025:2"
         {% if not loop.last %}
           ,
