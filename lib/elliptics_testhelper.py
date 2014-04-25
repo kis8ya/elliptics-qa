@@ -102,6 +102,8 @@ class EllipticsTestHelper(elliptics.Session):
 
         self.groups = groups
 
+        self.dropped_nodes = []
+
     @staticmethod
     def get_nodes_from_args(args):
         """ Returns list of nodes from command line arguments

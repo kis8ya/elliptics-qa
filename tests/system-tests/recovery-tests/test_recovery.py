@@ -24,8 +24,7 @@ class EllipticsTestHelper(et.EllipticsTestHelper):
                   "OUTPUT --proto tcp --destination-port {port} --jump DROP",
                   "OUTPUT --proto tcp --source-port {port} --jump DROP"]
 
-    @staticmethod
-    def drop_node(node):
+    def drop_node(self, node):
         """ Makes a node unavailable for elliptics requests
         """
         for drop_rule in EllipticsTestHelper.DROP_RULES:
@@ -34,9 +33,9 @@ class EllipticsTestHelper(et.EllipticsTestHelper):
                                                                   rule=rule)
             subprocess.call(shlex.split(cmd))
             print(cmd)
+            self.dropped_nodes.append(node)
 
-    @staticmethod
-    def resume_node(node):
+    def resume_node(self, node):
         """ Unlocks a node for elliptics requests
         """
         for drop_rule in EllipticsTestHelper.DROP_RULES:
@@ -44,6 +43,13 @@ class EllipticsTestHelper(et.EllipticsTestHelper):
             cmd = "ssh -q {host} iptables --delete {rule}".format(host=node.host,
                                                                   rule=rule)
             subprocess.call(shlex.split(cmd))
+            self.dropped_nodes.remove(node)
+
+    def resume_all_nodes(self):
+        """ Unlocks all nodes for elliptics requests
+        """
+        for node in self.dropped_nodes:
+            self.resume_node(node)
 
 nodes = EllipticsTestHelper.get_nodes_from_args(pytest.config.getoption("node"))
 client = EllipticsTestHelper(nodes=nodes, wait_timeout=25, check_timeout=30)
@@ -88,11 +94,11 @@ def write_data_when_dropped(nodes_number):
     dropped_nodes = drop_nodes(nodes_number)
 
     wait_time = 30
-    wait_count = 5
+    wait_count = 6
     print("Waiting for {0} seconds to update client's route list".format(wait_count * wait_time))
     for i in xrange(wait_count):
         time.sleep(wait_time)
-        client.routes.addresses()
+        print("After {0} seconds client's routes list looks like:\n{1}".format(wait_time * (i + 1), client.routes.addresses()))
 
     new_ring_partitioning = RingPartitioning(client)
 
@@ -149,7 +155,13 @@ def find_node(hostname):
     return [n for n in nodes if n.host == hostname][0]
 
 @pytest.fixture(scope='function')
-def write_data_when_two_dropped():
+def write_data_when_two_dropped(request):
+    def fin():
+        client.resume_all_nodes()
+        time.sleep(60)
+        
+    request.addfinalizer(fin)
+
     return write_data_when_dropped(2)
 
 @pytest.mark.four_servers
@@ -302,18 +314,19 @@ def test_dc(write_when_groups_dropped):
 
         bad_groups.remove(group)
         recovered_groups.append(group)
-        
-        # check that keys are not accessible in "dropped" groups
-        for k in key_list:
-            assert_that(calling(client.read_data_from_groups_sync).with_args(k, bad_groups),
-                        raises(elliptics.NotFoundError))
+
+        if bad_groups:
+            # check that keys are not accessible in "dropped" groups
+            for k in key_list:
+                assert_that(calling(client.read_data_from_groups_sync).with_args(k, bad_groups),
+                            raises(elliptics.NotFoundError))
 
         # check that keys are accessible in "recovered" groups
         for k in key_list:
             client.read_data_from_groups_sync(k, recovered_groups)
 
     # check all keys
-    for k in all_keys:
+    for k in key_list:
         for g in client.groups:
             data = client.read_data_from_groups_sync(k, [g]).pop().data
             assert_that(k, equal_to(et.utils.get_sha1(data)))
