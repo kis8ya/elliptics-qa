@@ -4,6 +4,8 @@ import elliptics
 import random
 import pytest
 import os
+import subprocess
+import shlex
 
 import utils
 
@@ -78,6 +80,10 @@ class EllipticsTestHelper(elliptics.Session):
 
     _log_path = "/var/log/elliptics/client.log"
     
+    DROP_RULES = ["INPUT --proto tcp --destination-port {port} --jump DROP",
+                  "OUTPUT --proto tcp --destination-port {port} --jump DROP",
+                  "OUTPUT --proto tcp --source-port {port} --jump DROP"]
+
     def __init__(self, nodes, wait_timeout, check_timeout,
                  groups=None, config=elliptics.Config(), logging_level=4):
         if logging_level:
@@ -111,6 +117,33 @@ class EllipticsTestHelper(elliptics.Session):
         """
         return [EllipticsTestHelper.Node(*n.split(':')) for n in args]
 
+    def drop_node(self, node):
+        """ Makes a node unavailable for elliptics requests
+        """
+        for drop_rule in EllipticsTestHelper.DROP_RULES:
+            rule = drop_rule.format(port=node.port)
+            cmd = "ssh -q {host} iptables --append {rule}".format(host=node.host,
+                                                                  rule=rule)
+            subprocess.call(shlex.split(cmd))
+            print(cmd)
+            self.dropped_nodes.append(node)
+
+    def resume_node(self, node):
+        """ Unlocks a node for elliptics requests
+        """
+        for drop_rule in EllipticsTestHelper.DROP_RULES:
+            rule = drop_rule.format(port=node.port)
+            cmd = "ssh -q {host} iptables --delete {rule}".format(host=node.host,
+                                                                  rule=rule)
+            subprocess.call(shlex.split(cmd))
+            self.dropped_nodes.remove(node)
+
+    def resume_all_nodes(self):
+        """ Unlocks all nodes for elliptics requests
+        """
+        for node in self.dropped_nodes:
+            self.resume_node(node)
+
     # Synchronous versions for Elliptics commands
     def write_data_sync(self, key, data, offset=0, chunk_size=0):
         return self.write_data(key, data, offset=offset, chunk_size=chunk_size).get()
@@ -127,6 +160,9 @@ class EllipticsTestHelper(elliptics.Session):
     def write_commit_sync(self, key, data, offset, csize):
         return self.write_commit(key, data, offset, csize).get()
 
+    def read_data_from_groups_sync(self, key, groups, offset=0):
+        return self.read_data_from_groups(key, groups=groups, offset=offset).get()
+    
 
     def checking_inaccessibility(self, key, data_len=None):
         """ Checking that data is inaccessible

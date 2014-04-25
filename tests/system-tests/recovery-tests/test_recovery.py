@@ -3,7 +3,6 @@ import socket
 import time
 import subprocess
 import shlex
-import sys
 import random
 import argparse
 
@@ -16,43 +15,8 @@ import elliptics_testhelper as et
 
 from utils import MB
 
-class EllipticsTestHelper(et.EllipticsTestHelper):
-    def read_data_from_groups_sync(self, key, groups, offset=0):
-        return self.read_data_from_groups(key, groups=groups, offset=offset).get()
-    
-    DROP_RULES = ["INPUT --proto tcp --destination-port {port} --jump DROP",
-                  "OUTPUT --proto tcp --destination-port {port} --jump DROP",
-                  "OUTPUT --proto tcp --source-port {port} --jump DROP"]
-
-    def drop_node(self, node):
-        """ Makes a node unavailable for elliptics requests
-        """
-        for drop_rule in EllipticsTestHelper.DROP_RULES:
-            rule = drop_rule.format(port=node.port)
-            cmd = "ssh -q {host} iptables --append {rule}".format(host=node.host,
-                                                                  rule=rule)
-            subprocess.call(shlex.split(cmd))
-            print(cmd)
-            self.dropped_nodes.append(node)
-
-    def resume_node(self, node):
-        """ Unlocks a node for elliptics requests
-        """
-        for drop_rule in EllipticsTestHelper.DROP_RULES:
-            rule = drop_rule.format(port=node.port)
-            cmd = "ssh -q {host} iptables --delete {rule}".format(host=node.host,
-                                                                  rule=rule)
-            subprocess.call(shlex.split(cmd))
-            self.dropped_nodes.remove(node)
-
-    def resume_all_nodes(self):
-        """ Unlocks all nodes for elliptics requests
-        """
-        for node in self.dropped_nodes:
-            self.resume_node(node)
-
-nodes = EllipticsTestHelper.get_nodes_from_args(pytest.config.getoption("node"))
-client = EllipticsTestHelper(nodes=nodes, wait_timeout=25, check_timeout=30)
+nodes = et.EllipticsTestHelper.get_nodes_from_args(pytest.config.getoption("node"))
+client = et.EllipticsTestHelper(nodes=nodes, wait_timeout=25, check_timeout=30)
 
 class RingPartitioning(object):
     def __init__(self, client):
@@ -95,7 +59,7 @@ def write_data_when_dropped(nodes_number):
 
     wait_time = 30
     wait_count = 6
-    print("Waiting for {0} seconds to update client's route list".format(wait_count * wait_time))
+    print("Waiting for {0} seconds to update client's routes list".format(wait_count * wait_time))
     for i in xrange(wait_count):
         time.sleep(wait_time)
         print("After {0} seconds client's routes list looks like:\n{1}".format(wait_time * (i + 1), client.routes.addresses()))
@@ -120,8 +84,6 @@ def write_data_when_dropped(nodes_number):
             bad_keys[current_host].append(key)
 
         data_size += len(data)
-        sys.stdout.write("\r{0}/{1}".format(i + 1, key_count))
-        sys.stdout.flush()
 
     bad_key_count = sum([len(v) for v in bad_keys.values()])
     print("\nDEBUG: with dropped {0} nodes there are {1}/{2} bad keys\ndata size: {3} MB".format(
@@ -256,10 +218,10 @@ def test_merge_add_two_nodes(write_data_when_two_dropped):
         except elliptics.NotFoundError:
             bad_key_count += 1
 
-    assert not bad_key_count, "There are {0} bad keys after merge (there were {1} before merge)".format(bad_key_count, len(bad_keys))
+    assert not bad_key_count, "There are {0} bad keys after merge (there were {1} before merge)".format(bad_key_count, len(bad_keys_list))
 
 @pytest.fixture(scope='function')
-def write_when_groups_dropped():
+def write_when_groups_dropped(request):
     groups_to_drop = random.sample(client.groups, 2)
     dropped_groups = drop_groups(groups_to_drop)
 
@@ -278,13 +240,16 @@ def write_when_groups_dropped():
         client.write_data_sync(key, data)
         key_list.append(key)
 
-        sys.stdout.write("\r{0}/{1}".format(i + 1, key_count))
-        sys.stdout.flush()
-
     for n in [i for v in dropped_groups.values() for i in v]:
         client.resume_node(n)
     print("\nWaiting for {0} seconds to update client's route list".format(wait_count * wait_time))
     time.sleep(wait_count * wait_time)
+
+    def fin():
+        client.resume_all_nodes()
+        time.sleep(60)
+        
+    request.addfinalizer(fin)
 
     return key_list, dropped_groups
 

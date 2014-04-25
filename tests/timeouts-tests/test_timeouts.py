@@ -17,26 +17,6 @@ from elliptics_testhelper import key_and_data
 from utils import MB
 
 class EllipticsTestHelper(et.EllipticsTestHelper):
-    DROP_RULE = "INPUT --proto tcp --destination-port {port} --jump DROP"
-
-    @staticmethod
-    def drop_node(node):
-        """ Makes a node unavailable for elliptics requests
-        """
-        rule = EllipticsTestHelper.DROP_RULE.format(port=node.port)
-        cmd = "ssh {host} iptables --append {rule}".format(host=node.host,
-                                                           rule=rule)
-        subprocess.call(shlex.split(cmd))
-
-    @staticmethod
-    def resume_node(node):
-        """ Unlocks a node for elliptics requests
-        """
-        rule = EllipticsTestHelper.DROP_RULE.format(port=node.port)
-        cmd = "ssh {host} iptables --delete {rule}".format(host=node.host,
-                                                           rule=rule)
-        subprocess.call(shlex.split(cmd))
-
     @staticmethod
     def set_networking_limitations(download=9216, upload=9216):
         """ Sets download/upload bandwidth limitation (9 MBit by default)
