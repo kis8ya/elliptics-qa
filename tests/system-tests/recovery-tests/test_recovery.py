@@ -52,17 +52,22 @@ def drop_groups(group_list):
 
     return groups_to_drop
 
-def write_data_when_dropped(nodes_number):
-    full_ring_partitioning = RingPartitioning(client)
-
-    dropped_nodes = drop_nodes(nodes_number)
-
+def wait_routes_list_update():
     wait_time = 30
     wait_count = 6
     print("Waiting for {0} seconds to update client's routes list".format(wait_count * wait_time))
     for i in xrange(wait_count):
         time.sleep(wait_time)
         print("After {0} seconds client's routes list looks like:\n{1}".format(wait_time * (i + 1), client.routes.addresses()))
+
+def write_data_when_dropped(nodes_number):
+    """Drops nodes, writes data then resume nodes
+    """
+    full_ring_partitioning = RingPartitioning(client)
+
+    dropped_nodes = drop_nodes(nodes_number)
+
+    wait_routes_list_update()
 
     new_ring_partitioning = RingPartitioning(client)
 
@@ -89,6 +94,7 @@ def write_data_when_dropped(nodes_number):
     print("\nDEBUG: with dropped {0} nodes there are {1}/{2} bad keys\ndata size: {3} MB".format(
             [n.host for n in dropped_nodes], bad_key_count, key_count, data_size / MB))
 
+    #TODO: delete this debug output
     print("bad keys")
     for k, v in bad_keys.items():
         print("{0}: {1} bad keys".format(k, len(v)))
@@ -108,8 +114,8 @@ def write_data_when_dropped(nodes_number):
 
     for n in dropped_nodes:
         client.resume_node(n)
-    print("\nWaiting for {0} seconds to update client's route list".format(wait_count * wait_time))
-    time.sleep(wait_count * wait_time)
+
+    wait_routes_list_update()
 
     return good_keys, bad_keys, dropped_nodes
 
@@ -126,9 +132,14 @@ def write_data_when_two_dropped(request):
 
     return write_data_when_dropped(2)
 
-@pytest.mark.four_servers
+@pytest.mark.merge
 @pytest.mark.timeout(3600)
 def test_one_node_option(write_data_when_two_dropped):
+    """Tests that 'dnet_recovery --remote ... --one-node merge'
+    will recover proper keys from every node
+    (even this node was dropped and has no keys to recover)
+    when there were 2 dropped nodes
+    """
     good_keys, bad_keys, dropped_nodes = write_data_when_two_dropped
 
     # check that "good" keys are accessible
@@ -142,9 +153,10 @@ def test_one_node_option(write_data_when_two_dropped):
             assert_that(calling(client.read_data_sync).with_args(k),
                         raises(elliptics.NotFoundError))
 
-    normal_nodes = [n for n in nodes if n.host not in bad_keys.keys()]
+    nodes_without_bad_keys = [n for n in nodes if n.host not in bad_keys.keys()]
 
-    for node in normal_nodes:
+    # Run dnet_recovery --one-node merge for nodes w/o keys to recover
+    for node in nodes_without_bad_keys:
         cmd = ["dnet_recovery",
                "--remote", "{0}:{1}:2".format(node.host, node.port),
                "--one-node",
@@ -159,6 +171,7 @@ def test_one_node_option(write_data_when_two_dropped):
             assert_that(calling(client.read_data_sync).with_args(k),
                         raises(elliptics.NotFoundError))
 
+    # Run dnet_recovery --one-node merge for nodes with keys to recover
     bad_key_list = [i for v in bad_keys.values() for i in v]
     recovered_keys = []
     for hostname, key_list in bad_keys.items():
@@ -193,44 +206,48 @@ def test_one_node_option(write_data_when_two_dropped):
         data = client.read_data_sync(k).pop().data
         assert_that(k, equal_to(et.utils.get_sha1(data)))
 
-@pytest.mark.four_servers
+@pytest.mark.merge
 @pytest.mark.timeout(3600)
 def test_merge_add_two_nodes(write_data_when_two_dropped):
+    """Tests that 'dnet_recovery --remote ... merge'
+    will recover all keys when there were 2 dropped nodes
+    """
     good_keys, bad_keys, dropped_nodes = write_data_when_two_dropped
 
-    # dnet_recovery merge
-    cmd = "dnet_recovery --remote={0}:{1}:2 merge".format(nodes[0].host, nodes[0].port)
-    print(cmd)
-    output = subprocess.check_output(shlex.split(cmd))
-    print(output)
+    # check that "good" keys are accessible
+    for key_list in good_keys.values():
+        for k in key_list:
+            client.read_data_sync(k)
+                
+    # check that "bad" keys are not accessible
+    for key_list in bad_keys.values():
+        for k in key_list:
+            assert_that(calling(client.read_data_sync).with_args(k),
+                        raises(elliptics.NotFoundError))
 
-    # check keys and data
+    # Run dnet_recovery merge
+    node = random.choice(nodes)
+    cmd = ["dnet_recovery",
+           "--remote", "{0}:{1}:2".format(node.host, node.port),
+           "merge"]
+    print(cmd)
+    subprocess.call(cmd)
+
+    # check all keys and data
     good_keys_list = [k for v in good_keys.values() for k in v]
     bad_keys_list = [k for v in bad_keys.values() for k in v]
-    print("DEBUG: {0}".format(len(good_keys_list + bad_keys_list)))
-    bad_key_count = 0
     for k in good_keys_list + bad_keys_list:
-        try:
-            data = client.read_data_sync(k).pop().data
-
-            if et.utils.get_sha1(data) != k:
-                bad_key_count += 1
-        except elliptics.NotFoundError:
-            bad_key_count += 1
-
-    assert not bad_key_count, "There are {0} bad keys after merge (there were {1} before merge)".format(bad_key_count, len(bad_keys_list))
+        data = client.read_data_sync(k).pop().data
+        assert_that(k, equal_to(et.utils.get_sha1(data)))
 
 @pytest.fixture(scope='function')
 def write_when_groups_dropped(request):
+    """Drops two groups, writes data then resume all nodes from these groups
+    """
     groups_to_drop = random.sample(client.groups, 2)
     dropped_groups = drop_groups(groups_to_drop)
 
-    wait_time = 30
-    wait_count = 5
-    print("Waiting for {0} seconds to update client's route list".format(wait_count * wait_time))
-    for i in xrange(wait_count):
-        time.sleep(wait_time)
-        client.routes.addresses()
+    wait_routes_list_update()
 
     key_count = pytest.config.getoption("files_number")
     key_list = []
@@ -242,8 +259,8 @@ def write_when_groups_dropped(request):
 
     for n in [i for v in dropped_groups.values() for i in v]:
         client.resume_node(n)
-    print("\nWaiting for {0} seconds to update client's route list".format(wait_count * wait_time))
-    time.sleep(wait_count * wait_time)
+
+    wait_routes_list_update()
 
     def fin():
         client.resume_all_nodes()
@@ -256,6 +273,10 @@ def write_when_groups_dropped(request):
 @pytest.mark.dc
 @pytest.mark.timeout(3600)
 def test_dc(write_when_groups_dropped):
+    """Tests that 'dnet_recovery --remote ... dc'
+    will recover all keys for every dropped group
+    when there were 2 dropped groups
+    """
     key_list, dropped_groups = write_when_groups_dropped
     bad_groups = [int(g) for g in dropped_groups.keys()]
 
@@ -287,11 +308,12 @@ def test_dc(write_when_groups_dropped):
                             raises(elliptics.NotFoundError))
 
         # check that keys are accessible in "recovered" groups
-        for k in key_list:
-            client.read_data_from_groups_sync(k, recovered_groups)
+        for g in recovered_groups:
+            for k in key_list:
+                client.read_data_from_groups_sync(k, [g])
 
     # check all keys
-    for k in key_list:
-        for g in client.groups:
+    for g in client.groups:
+        for k in key_list:
             data = client.read_data_from_groups_sync(k, [g]).pop().data
             assert_that(k, equal_to(et.utils.get_sha1(data)))

@@ -71,6 +71,9 @@ class EllipticsTestHelper(elliptics.Session):
             self.port = int(port)
             self.group = int(group)
 
+        def __repr__(self):
+            return "Node({0}, {1}, {2})".format(self.host, self.port, self.group)
+
     error_info = type("Errors", (), {
             'WrongArguments': "Argument list too long",
             'NotExists': "No such file or directory",
