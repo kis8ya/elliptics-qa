@@ -76,6 +76,7 @@ def write_data_when_dropped(nodes_number):
     good_keys = defaultdict(list)
     bad_keys = defaultdict(list)
     data_size = 0
+    print("Started writing {0} files".format(key_count))
     for i in xrange(key_count):
         key, data = et.key_and_data()
         elliptics_id =  client.transform(key)
@@ -90,6 +91,7 @@ def write_data_when_dropped(nodes_number):
             bad_keys[current_host].append(key)
 
         data_size += len(data)
+    print("Finished writing files")
 
     bad_key_count = sum([len(v) for v in bad_keys.values()])
     print("\nDEBUG: with dropped {0} nodes there are {1}/{2} bad keys\ndata size: {3} MB".format(
@@ -254,11 +256,13 @@ def write_when_groups_dropped(request):
 
     key_count = pytest.config.getoption("files_number")
     key_list = []
+    print("Started writing {0} files".format(key_count))
     for i in xrange(key_count):
         key, data = et.key_and_data()
 
         client.write_data_sync(key, data)
         key_list.append(key)
+    print("Finished writing files")
 
     for n in [i for v in dropped_groups.values() for i in v]:
         client.resume_node(n)
@@ -297,6 +301,7 @@ def test_dc(write_when_groups_dropped):
         for node in node_list:
             cmd = ["dnet_recovery",
                    "--remote", "{0}:{1}:2".format(node.host, node.port),
+                   "--groups", ','.join(map(str, client.groups)),
                    "dc"]
             print(cmd)
             subprocess.call(cmd)

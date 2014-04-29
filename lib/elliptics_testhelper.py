@@ -125,8 +125,8 @@ class EllipticsTestHelper(elliptics.Session):
         """
         for drop_rule in EllipticsTestHelper.DROP_RULES:
             rule = drop_rule.format(port=node.port)
-            cmd = "ssh -q {host} iptables --append {rule}".format(host=node.host,
-                                                                  rule=rule)
+            cmd = "ssh -q root@{host} iptables --append {rule}".format(host=node.host,
+                                                                       rule=rule)
             subprocess.call(shlex.split(cmd))
             print(cmd)
             self.dropped_nodes.append(node)
@@ -136,8 +136,8 @@ class EllipticsTestHelper(elliptics.Session):
         """
         for drop_rule in EllipticsTestHelper.DROP_RULES:
             rule = drop_rule.format(port=node.port)
-            cmd = "ssh -q {host} iptables --delete {rule}".format(host=node.host,
-                                                                  rule=rule)
+            cmd = "ssh -q root@{host} iptables --delete {rule}".format(host=node.host,
+                                                                       rule=rule)
             subprocess.call(shlex.split(cmd))
             self.dropped_nodes.remove(node)
 
