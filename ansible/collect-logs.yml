@@ -1,11 +1,17 @@
 ---
 - hosts: 127.0.0.1
   tasks:
-    - name: Remove logs directory 
-      local_action: file path=/tmp/logs state=absent
+    - name: Remove logs' directories
+      local_action: file path={{ item }} state=absent
+      with_items:
+        - /tmp/logs
+        - /tmp/logs-archive
 
-    - name: Make directory for logs
-      local_action: file path=/tmp/logs state=directory
+    - name: Create logs' directories
+      local_action: file path={{ item }} state=directory
+      with_items:
+        - /tmp/logs
+        - /tmp/logs-archive
 
 - hosts: servers
   tasks:
@@ -17,3 +23,10 @@
     - name: Copy clients logs
       local_action: command scp root@{{ ansible_eth0.ipv4.address }}:{{ log_dir }}/client.log /tmp/logs/{{ ansible_hostname }}.log
       ignore_errors: yes
+
+- hosts: 127.0.0.1
+  tasks:
+    - name: zip files
+      local_action: command zip /tmp/logs-archive/{{ item|replace("/tmp/logs/", "") }}.zip {{ item }}
+      with_fileglob:
+        - /tmp/logs/*

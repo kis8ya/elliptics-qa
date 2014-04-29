@@ -9,6 +9,7 @@ import sys
 import glob
 import ConfigParser
 import pytest
+import subprocess
 
 import ansible_manager
 import instances_manager
@@ -54,6 +55,19 @@ def _decode_value(data):
         res = data.encode('utf-8')
 
     return res
+
+def qa_storage_upload(file_path):
+    build_number = os.environ['BUILD_NUMBER']
+    file_name = os.path.basename(file_path)
+    url = "http://qa-storage.yandex-team.ru/upload/elliptics-testing/{build_number}/{file_name}"
+    url = url.format(build_number=build_number, file_name=file_name)
+    cmd = ["curl", url, "--data-binary", "@" + file_path]
+    print(cmd)
+#    subprocess.call(cmd)
+
+    url = url.replace("/upload/", "/get/")
+
+    return url
 #END of util functions
 
 def get_target_branch():
@@ -199,7 +213,8 @@ def collect_tests(tags):
 def run(name):
     opts = '-d --teamcity --tx ssh="{0}.i.fog.yandex.net -l root -q" --rsyncdir lib/elliptics_testhelper.py --rsyncdir lib/utils.py --rsyncdir tests/{1}/ tests/{1}/'
     opts = opts.format(instances_names['client'], tests[name]["dir"])
-    print(opts)
+    if verbose_output:
+        print(opts)
     pytest.main(opts)
 
     # playbook = _abspath(tests[name]["playbook"])
@@ -236,7 +251,8 @@ def setup(test_name):
     with open(os.path.join(tests_dir, "pytest.ini"), "w") as config_file:
         pytest_config.write(config_file)
 
-    print((open(os.path.join(tests_dir, "pytest.ini"))).read())
+    if verbose_output:
+        print((open(os.path.join(tests_dir, "pytest.ini"))).read())
 
 def teardown():
     ansible_manager.run_playbook(playbook=_abspath("elliptics-stop"),
@@ -247,6 +263,8 @@ parser.add_argument('--branch', dest="branch", default="master")
 parser.add_argument('--testsuite-params', dest="testsuite_params", default="{}")
 parser.add_argument('--packages-dir', dest="packages_dir")
 parser.add_argument('--tag', action="append", dest="tag")
+
+parser.add_argument('--verbose', '-v', action="store_true", dest="verbose")
 args = parser.parse_args()
 
 repo_dir = os.path.dirname(os.path.abspath(__file__))
@@ -254,6 +272,8 @@ tests_dir = os.path.join(repo_dir, "tests")
 ansible_dir = os.path.join(repo_dir, "ansible")
 packages_dir = args.packages_dir
 testsuite_params = json.loads(args.testsuite_params, object_hook=_decode_value)
+
+verbose_output = args.verbose
 
 tests = None
 instances_names = None
@@ -279,5 +299,17 @@ if __name__ == "__main__":
 
 
     # collect logs
+    tc_block = "LOGS: Collecting logs"
+    teamcity_messages.start_block(tc_block)
     ansible_manager.run_playbook(_abspath("collect-logs"),
                                  _get_inventory_path("test-env-prepare"))
+    path = "/tmp/logs-archive"
+    logs = []
+    for f in os.listdir(path):
+        logs.append(qa_storage_upload(os.path.join(path, f)))
+    teamcity_messages.end_block(tc_block)
+
+    tc_block = "LOGS: Links"
+    teamcity_messages.start_block(tc_block)
+    print('\n'.join(logs))
+    teamcity_messages.end_block(tc_block)
