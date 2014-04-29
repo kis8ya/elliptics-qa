@@ -5,6 +5,7 @@ import subprocess
 import shlex
 import random
 import argparse
+import math
 
 from collections import defaultdict
 from hamcrest import assert_that, raises, calling, equal_to
@@ -244,7 +245,9 @@ def test_merge_add_two_nodes(write_data_when_two_dropped):
 def write_when_groups_dropped(request):
     """Drops two groups, writes data then resume all nodes from these groups
     """
-    groups_to_drop = random.sample(client.groups, 2)
+    groups_count = len(client.groups)
+    groups_count_to_drop = int(math.ceil(groups_count / 2.0))
+    groups_to_drop = random.sample(client.groups, groups_count_to_drop)
     dropped_groups = drop_groups(groups_to_drop)
 
     wait_routes_list_update()
