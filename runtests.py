@@ -13,6 +13,7 @@ import pytest
 import ansible_manager
 import instances_manager
 import openstack
+import teamcity_messages
 
 # util functions
 def _abspath(path):
@@ -160,7 +161,9 @@ def install_elliptics_packages(instances_params):
 def prepare_base_environment(branch):
     """ Prepares base test environment
     """
-    print("##teamcity[blockOpened name='PREPARE TEST ENVIRONMENT']")
+    tc_block = "PREPARE TEST ENVIRONMENT"
+    teamcity_messages.start_block(tc_block)
+
     collect_tests(args.tag)
 
     global instances_names
@@ -174,7 +177,7 @@ def prepare_base_environment(branch):
     instances_manager.create(instances_cfg)
     install_elliptics_packages(instances_params)
 
-    print("##teamcity[blockClosed name='PREPARE TEST ENVIRONMENT']")
+    teamcity_messages.end_block(tc_block)
 
 def collect_tests(tags):
     """Collects information about tests to run
@@ -216,6 +219,7 @@ def setup(test_name):
 
     opts = tests[test_name]["addopts"].format(**tests[test_name]["params"])
 
+    # Generate pytest.ini with test options
     servers_per_group = tests[test_name]["test_env_cfg"]["servers"]["count_per_group"]
     groups_count = len(servers_per_group)
     config = {"name": instances_names['server'],
@@ -264,9 +268,15 @@ if __name__ == "__main__":
     # instances_names = {'client': "elliptics-{0}-client".format(branch),
     #                    'server': "elliptics-{0}-server".format(branch)}
     for test_name, test_cfg in tests.items():
+        tc_block = "TEST: {0}".format(test_name)
+        teamcity_messages.start_block(tc_block)
+
         setup(test_name)
         run(test_name)
         teardown()
+
+        teamcity_messages.end_block(tc_block)
+
 
     # collect logs
     ansible_manager.run_playbook(_abspath("collect-logs"),

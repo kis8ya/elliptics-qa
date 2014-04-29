@@ -5,6 +5,7 @@ import subprocess
 import ConfigParser
 
 import openstack
+import teamcity_messages
 
 def get_vars(vars_path):
     if not os.path.isfile(vars_path):
@@ -27,11 +28,11 @@ def update_vars(vars_path, params):
     set_vars(vars_path, vars)
 
 def run_playbook(playbook, inventory=None):
-    cmd = "ansible-playbook -v -i {0} {1}.yml".format(inventory, playbook)
-    tc_info = "ANSIBLE: {0}({1})".format(os.path.basename(playbook),
+    tc_block = "ANSIBLE: {0}({1})".format(os.path.basename(playbook),
                                          os.path.basename(inventory))
-    print("##teamcity[blockOpened name='{0}']".format(tc_info))
+    teamcity_messages.start_block(tc_block)
 
+    cmd = "ansible-playbook -v -i {0} {1}.yml".format(inventory, playbook)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
 
     for line in iter(p.stdout.readline, ''):
@@ -41,7 +42,7 @@ def run_playbook(playbook, inventory=None):
     if p.returncode:
         raise RuntimeError("Playbook {0} failed (exit code: {1})".format(playbook, p.returncode))
 
-    print("##teamcity[blockClosed name='{0}']".format(tc_info))
+    teamcity_messages.end_block(tc_block)
 
 def generate_inventory_file(inventory_path, clients_count, servers_per_group, groups, instances_names):
     inventory_host_record_template = '{0}.i.fog.yandex.net ansible_ssh_user=root'
