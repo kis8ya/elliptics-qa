@@ -4,8 +4,7 @@
     "level": 4
   },
   "options": {
-    "join": 1,
-    "group": {{ group }},
+    "join": true,
     "remote": [
       {% for host in groups['servers'] %}
         "{{ host }}:1025:2"
@@ -20,13 +19,16 @@
     "io_thread_num": 8,
     "nonblocking_io_thread_num": 8,
     "net_thread_num": 4,
-    "daemon": 1,
+    "daemon": true,
     "auth_cookie": "ellicoca",
-    "cache_size": 20971520
+    "cache": {
+      "size": 20971520
+    }
   },
   "backends": [
     {
       "type": "blob",
+      "group": {{ group }},
       "history": "{{ hist_dir }}",
       "data": "{{ data_dir }}/data",
       {% if cocaine_config is defined %}
