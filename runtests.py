@@ -62,8 +62,7 @@ def qa_storage_upload(file_path):
     url = "http://qa-storage.yandex-team.ru/upload/elliptics-testing/{build_number}/{file_name}"
     url = url.format(build_number=build_number, file_name=file_name)
     cmd = ["curl", url, "--data-binary", "@" + file_path]
-    print(cmd)
-#    subprocess.call(cmd)
+    subprocess.call(cmd)
 
     url = url.replace("/upload/", "/get/")
 
