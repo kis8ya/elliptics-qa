@@ -57,10 +57,13 @@ def _decode_value(data):
     return res
 
 def qa_storage_upload(file_path):
+    build_name = os.environ['TEAMCITY_BUILDCONF_NAME']
+    build_name = build_name.replace(' ', '_')
     build_number = os.environ['BUILD_NUMBER']
     file_name = os.path.basename(file_path)
-    url = "http://qa-storage.yandex-team.ru/upload/elliptics-testing/{build_number}/{file_name}"
-    url = url.format(build_number=build_number, file_name=file_name)
+    url = 'http://qa-storage.yandex-team.ru/upload/elliptics-testing/{build_name}/{build_number}/{file_name}'
+    url = url.format(build_name=build_name, build_number=build_number, file_name=file_name)
+
     cmd = ["curl", url, "--data-binary", "@" + file_path]
     subprocess.call(cmd)
 
