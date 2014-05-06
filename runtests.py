@@ -10,6 +10,7 @@ import glob
 import ConfigParser
 import pytest
 import subprocess
+import ConfigParser
 
 import ansible_manager
 import instances_manager
@@ -58,6 +59,19 @@ def qa_storage_upload(file_path):
     url = url.replace("/upload/", "/get/")
 
     return url
+
+def set_teamcity_messaging_level(level):
+    """Sets/unsets logging level for teamcity_messages module
+    (level = true|false => logging_level = INFO|ERROR)
+    """
+    conf_file = 'lib/teamcity_messages.conf'
+    parser = ConfigParser.ConfigParser()
+    parser.read([conf_file])
+    logging_level = "INFO" if level else "ERROR"
+    parser.set('logger_teamcityLogger', 'level', logging_level)
+    with open(conf_file, "w") as conf:
+        parser.write(conf)
+
 #END of util functions
 
 class TestRunner(object):
@@ -70,6 +84,7 @@ class TestRunner(object):
         self.tags = args.tag
 
         self.verbose_output = args.verbose
+        self.teamcity = args.teamcity
 
         self.tests = None
         self.instances_names = None
@@ -154,7 +169,7 @@ class TestRunner(object):
 
         for name, cfg in self.tests.items():
             groups = ansible_manager._get_groups_names(name)
-            inventory_path = self._get_inventory_path(name)
+            inventory_path = self.get_inventory_path(name)
 
             ansible_manager.generate_inventory_file(inventory_path=inventory_path,
                                                     clients_count=cfg["test_env_cfg"]["clients"]["count"],
@@ -166,7 +181,7 @@ class TestRunner(object):
         """Installs elliptics packages on all servers and clients
         """
         base_setup_playbook = "test-env-prepare"
-        inventory_path = self._get_inventory_path(base_setup_playbook)
+        inventory_path = self.get_inventory_path(base_setup_playbook)
         groups = ansible_manager._get_groups_names("setup")
 
         ansible_manager.generate_inventory_file(inventory_path=inventory_path,
@@ -183,15 +198,13 @@ class TestRunner(object):
             ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
                                         params={"packages_dir": self.packages_dir})
 
-        ansible_manager.run_playbook(self._abspath(base_setup_playbook),
+        ansible_manager.run_playbook(self.abspath(base_setup_playbook),
                                      inventory_path)
 
+    @teamcity_messages.block("PREPARE TEST ENVIRONMENT")
     def prepare_base_environment(self):
         """ Prepares base test environment
         """
-        tc_block = "PREPARE TEST ENVIRONMENT"
-        teamcity_messages.start_block(tc_block)
-
         self.collect_tests()
 
         self.instances_names = {'client': "elliptics-{0}-client".format(self.branch),
@@ -203,8 +216,6 @@ class TestRunner(object):
         self.prepare_ansible_test_files()
         instances_manager.create(instances_cfg)
         self.install_elliptics_packages()
-
-        teamcity_messages.end_block(tc_block)
 
     def generate_pytest_cfg(self, test_name):
         """Generates pytest.ini with test options
@@ -234,47 +245,47 @@ class TestRunner(object):
         test = self.tests[test_name]
         # Prepare test environment for a specific test
         if test["test_env_cfg"].get("prepare_env"):
-            ansible_manager.run_playbook(self._abspath(test["test_env_cfg"]["prepare_env"]),
-                                         self._get_inventory_path(test_name))
+            ansible_manager.run_playbook(self.abspath(test["test_env_cfg"]["prepare_env"]),
+                                         self.get_inventory_path(test_name))
 
         # Run elliptics process on all servers
-        ansible_manager.run_playbook(self._abspath("elliptics-start"),
-                                     self._get_inventory_path(test_name))
+        ansible_manager.run_playbook(self.abspath("elliptics-start"),
+                                     self.get_inventory_path(test_name))
 
         self.generate_pytest_cfg(test_name)
 
     def run(self, test_name):
-        opts = '-d --teamcity --tx ssh="{0}.i.fog.yandex.net -l root -q" --rsyncdir lib/elliptics_testhelper.py --rsyncdir lib/utils.py --rsyncdir tests/{1}/ tests/{1}/'
+        if self.teamcity:
+            opts = '--teamcity'
+        else:
+            opts = ''
+        opts += ' -d --tx ssh="{0}.i.fog.yandex.net -l root -q" --rsyncdir lib/elliptics_testhelper.py --rsyncdir lib/utils.py --rsyncdir tests/{1}/ tests/{1}/'
         opts = opts.format(self.instances_names['client'], self.tests[test_name]["dir"])
         if self.verbose_output:
             print(opts)
         pytest.main(opts)
 
     def teardown(self, test_name):
-        ansible_manager.run_playbook(playbook=self._abspath("elliptics-stop"),
-                                     inventory=self._get_inventory_path(test_name))
+        ansible_manager.run_playbook(playbook=self.abspath("elliptics-stop"),
+                                     inventory=self.get_inventory_path(test_name))
 
     def run_tests(self):
         for test_name, test_cfg in self.tests.items():
-            tc_block = "TEST: {0}".format(test_name)
-            teamcity_messages.start_block(tc_block)
+            with teamcity_messages.block("TEST: {0}".format(test_name)):
+                self.setup(test_name)
+                self.run(test_name)
+                self.teardown(test_name)
 
-            self.setup(test_name)
-            self.run(test_name)
-            self.teardown(test_name)
-
-            teamcity_messages.end_block(tc_block)
-
-    def _abspath(self, path):
+    def abspath(self, path):
         abs_path = os.path.join(self.ansible_dir, path)
         return abs_path
 
-    def _get_inventory_path(self, name):
-        path = self._abspath("{0}.hosts".format(name))
+    def get_inventory_path(self, name):
+        path = self.abspath("{0}.hosts".format(name))
         return path
 
     def _get_vars_path(self, name):
-        path = self._abspath("group_vars/{0}.yml".format(name))
+        path = self.abspath("group_vars/{0}.yml".format(name))
         return path
 
 if __name__ == "__main__":
@@ -285,24 +296,22 @@ if __name__ == "__main__":
     parser.add_argument('--tag', action="append", dest="tag")
 
     parser.add_argument('--verbose', '-v', action="store_true", dest="verbose")
+    parser.add_argument('--teamcity', action="store_true", dest="teamcity")
     args = parser.parse_args()
 
-    testrunner = TestRunner(args)
+    set_teamcity_messaging_level(args.teamcity)
 
+    testrunner = TestRunner(args)
     testrunner.run_tests()
 
     # collect logs
-    tc_block = "LOGS: Collecting logs"
-    teamcity_messages.start_block(tc_block)
-    ansible_manager.run_playbook(_abspath("collect-logs"),
-                                 _get_inventory_path("test-env-prepare"))
-    path = "/tmp/logs-archive"
-    logs = []
-    for f in os.listdir(path):
-        logs.append(qa_storage_upload(os.path.join(path, f)))
-    teamcity_messages.end_block(tc_block)
+    with teamcity_messages.block("LOGS: Collecting logs"):
+        ansible_manager.run_playbook(testrunner.abspath("collect-logs"),
+                                     testrunner.get_inventory_path("test-env-prepare"))
+        path = "/tmp/logs-archive"
+        logs = []
+        for f in os.listdir(path):
+            logs.append(qa_storage_upload(os.path.join(path, f)))
 
-    tc_block = "LOGS: Links"
-    teamcity_messages.start_block(tc_block)
-    print('\n'.join(logs))
-    teamcity_messages.end_block(tc_block)
+    with teamcity_messages.block("LOGS: Links"):
+        print('\n'.join(logs))
