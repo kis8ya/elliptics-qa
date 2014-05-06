@@ -1,8 +1,0 @@
----
-- hosts: clients
-  vars:
-    test_apps:
-      - queue
-      - testerhead-cpp
-  roles:
-    - elliptics-test-app
