@@ -254,6 +254,9 @@ class TestRunner(object):
 
         self.generate_pytest_cfg(test_name)
 
+        print("Test environment configuration:\n\tclients: {0}\n\tservers per group: {1}".format(test["test_env_cfg"]["clients"]["count"],
+                                                                                                 test["test_env_cfg"]["servers"]["count_per_group"]))
+
     def run(self, test_name):
         if self.teamcity:
             opts = '--teamcity'
