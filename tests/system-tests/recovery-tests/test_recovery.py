@@ -7,7 +7,7 @@ import argparse
 import math
 
 from collections import defaultdict
-from hamcrest import assert_that, raises, calling, equal_to, has_length
+from hamcrest import assert_that, raises, calling, equal_to, has_length, contains
 
 import elliptics
 
@@ -303,7 +303,7 @@ def write_indexes_when_groups_dropped(request):
         
     request.addfinalizer(fin)
 
-    return good_keys, bad_keys, dropped_groups
+    return good_keys, bad_keys, dropped_groups, indexes
 
 @pytest.mark.dc
 @pytest.mark.timeout(3600)
@@ -312,7 +312,7 @@ def test_dc_indexes(write_indexes_when_groups_dropped):
     will recover all keys for every dropped group
     when there were 2 dropped groups
     """
-    good_keys, bad_keys, dropped_groups = write_indexes_when_groups_dropped
+    good_keys, bad_keys, dropped_groups, indexes = write_indexes_when_groups_dropped
     bad_groups = [int(g) for g in dropped_groups.keys()]
     ring_partitioning = RingPartitioning(client)
 
@@ -370,3 +370,13 @@ def test_dc_indexes(write_indexes_when_groups_dropped):
             data = client.read_data_from_groups_sync(k, [g]).pop().data
             assert_that(k, equal_to(et.utils.get_sha1(data)))
 
+    # check indexes
+    for i in indexes:
+        res = client.find_all_indexes([i]).get()
+        for r in res:
+            for k in good_keys.keys():
+                if client.transform(k) == r.id:
+                    assert_that(good_keys[k], contains([i]))
+                    break
+            else:
+                raise AssertionError("Found an odd key: elliptics.Id({0}) with unexpected index: {1}".format(r.id, i))
