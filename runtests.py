@@ -90,10 +90,10 @@ class TestRunner(object):
         self.instances_names = None
         self.instances_params = None
 
-        self.collect_target_branch(args.branch)
+        self.branch = self.get_distribution_branch(args.git_branch)
         self.prepare_base_environment()
 
-    def collect_target_branch(self, branch):
+    def get_distribution_branch(self, branch):
         """Checks (and stores) target branch (master/lts)
         """
         if branch.startswith('pull/'):
@@ -102,14 +102,14 @@ class TestRunner(object):
             url = "https://api.github.com/repos/reverbrain/elliptics/pulls/{0}".format(pr_number)
             r = requests.get(url)
             pr_info = r.json(object_hook=_decode_value)
-            self.branch = pr_info["base"]["ref"]
+            distribution_branch = pr_info["base"]["ref"]
         else:
-            self.branch = branch
+            distribution_branch = branch
 
-        if branch == "master":
-            self.branch = "testing"
-        elif branch == "lts":
-            self.branch = "stable"
+        if distribution_branch == "master":
+            return "testing"
+        elif distribution_branch == "lts":
+            return "stable"
         else:
             raise RuntimeError("Wrong branch was specified: {0}".format(branch))
 
@@ -293,7 +293,7 @@ class TestRunner(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--branch', dest="branch", default="master")
+    parser.add_argument('--branch', dest="git_branch", default="master")
     parser.add_argument('--testsuite-params', dest="testsuite_params", default="{}")
     parser.add_argument('--packages-dir', dest="packages_dir")
     parser.add_argument('--tag', action="append", dest="tag")
