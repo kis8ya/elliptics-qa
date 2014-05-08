@@ -177,6 +177,12 @@ class TestRunner(object):
                                                     groups=groups,
                                                     instances_names=self.instances_names)
 
+            params = cfg["params"]
+            if name in self.testsuite_params:
+                params.update(self.testsuite_params[name])
+            vars_path = self._get_vars_path(groups['test'])
+            ansible_manager.set_vars(vars_path=vars_path, params=params)
+
     def install_elliptics_packages(self):
         """Installs elliptics packages on all servers and clients
         """

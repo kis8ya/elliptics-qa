@@ -9,6 +9,8 @@ data_dir: /opt/elliptics
 hist_dir: /tmp/history
 config: /etc/elliptics.conf
 blob_size: 2G
+cache_size: 20971520
+cache_sync_timeout: 60
 
 # Test paramaters
 check_timeout: 30

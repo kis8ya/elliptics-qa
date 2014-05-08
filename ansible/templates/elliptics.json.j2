@@ -22,7 +22,9 @@
     "daemon": true,
     "auth_cookie": "ellicoca",
     "cache": {
-      "size": 20971520
+      "size": {{ cache_size }},
+      "shards": 16,
+      "sync_timeout": {{ cache_sync_timeout }}
     }
   },
   "backends": [
