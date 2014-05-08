@@ -10,5 +10,5 @@
 
     - name: Wait for Elliptics to stop
       shell: while [ -e /proc/{{ pgrep.stdout }} ]; do sleep 0.1; done
-      async: 45
-      poll: 5
+      async: 420
+      poll: 15
