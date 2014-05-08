@@ -175,7 +175,8 @@ class TestRunner(object):
                                                     clients_count=cfg["test_env_cfg"]["clients"]["count"],
                                                     servers_per_group=cfg["test_env_cfg"]["servers"]["count_per_group"],
                                                     groups=groups,
-                                                    instances_names=self.instances_names)
+                                                    instances_names=self.instances_names,
+                                                    force_expand_names=True)
 
             params = cfg["params"]
             if name in self.testsuite_params:
@@ -232,7 +233,11 @@ class TestRunner(object):
         groups_count = len(servers_per_group)
         config = {"name": self.instances_names['server'],
                   "max_count": sum(servers_per_group)}
-        servers_names = openstack.utils.get_instances_names_from_conf(config)
+        #TODO: remove this temporary fix
+        if config['max_count'] == 1:
+            servers_names = ["{0}-1".format(config["name"])]
+        else:
+            servers_names = openstack.utils.get_instances_names_from_conf(config)
         server_name = (x for x in servers_names)
         for g in xrange(groups_count):
             for i in xrange(servers_per_group[g]):
@@ -317,10 +322,12 @@ if __name__ == "__main__":
     with teamcity_messages.block("LOGS: Collecting logs"):
         ansible_manager.run_playbook(testrunner.abspath("collect-logs"),
                                      testrunner.get_inventory_path("test-env-prepare"))
-        path = "/tmp/logs-archive"
-        logs = []
-        for f in os.listdir(path):
-            logs.append(qa_storage_upload(os.path.join(path, f)))
+        if args.teamcity:
+            path = "/tmp/logs-archive"
+            logs = []
+            for f in os.listdir(path):
+                logs.append(qa_storage_upload(os.path.join(path, f)))
 
-    with teamcity_messages.block("LOGS: Links"):
-        print('\n'.join(logs))
+    if args.teamcity:
+        with teamcity_messages.block("LOGS: Links"):
+            print('\n'.join(logs))
