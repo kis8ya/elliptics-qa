@@ -88,6 +88,8 @@ apt_preserve_sources_list: true
         for instance_cfg in config['servers']:
             instances = utils.get_instances_names_from_conf(instance_cfg)
 
+            self.delete_instance(instance_cfg["name"])
+
             for i in instances:
                 self.delete_instance(i)
 
