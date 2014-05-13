@@ -171,7 +171,7 @@ class EllipticsTestHelper(elliptics.Session):
         """ Checking that data is inaccessible
         """
         try:
-            result_data = str(self._session.read_data(key).data)
+            result_data = self.read_data_sync(key).pop().data
         except Exception as e:
             print e.message
         else:
