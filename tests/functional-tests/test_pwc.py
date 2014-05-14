@@ -45,7 +45,8 @@ def test_prepare_write_commit(timestamp, user_flags):
                                                   user_flags=user_flags,
                                                   data=data)))
 
-@pytest.mark.pwctest
+#TODO: add this test case back (it's was excluded temporary for some reasons)
+#@pytest.mark.pwctest
 def test_pwc_inaccessibility(timestamp, user_flags):
     """ Testing that data is inaccessible after write_prepare and write_plain
     (prepare-write-commit scheme)
