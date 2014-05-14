@@ -206,3 +206,78 @@ def test_read_from_groups(write_and_shuffling_off):
 
     assert_that(all_of(exec_time, greater_than(WAIT_TIMEOUT),
                        exec_time, less_than(WAIT_TIMEOUT * 2)))
+
+#TODO: move this function to lib/utils.py
+def drop_groups(client, group_list):
+    groups_to_drop = {}
+    for g in group_list:
+        groups_to_drop[g] = [n for n in nodes if n.group == g]
+
+    for n in [i for v in groups_to_drop.values() for i in v]:
+        client.drop_node(n)
+
+    return groups_to_drop
+
+def wait_routes_list_update(client):
+    wait_time = 30
+    wait_count = 6
+    print("Waiting for {0} seconds to update client's routes list".format(wait_count * wait_time))
+    for i in xrange(wait_count):
+        time.sleep(wait_time)
+        print("After {0} seconds client's routes list looks like:\n{1}".format(wait_time * (i + 1), client.routes.addresses()))
+
+@pytest.fixture(scope='function')
+def prepare_keepalive_check(request, test_helper, key_and_data):
+    """Writes file and drops nodes from half groups
+    """
+    key, data = key_and_data
+
+    test_helper.write_data_sync(key, data)
+
+    # drop half groups
+    groups_count = len(test_helper.groups)
+    groups_count_to_drop = int(math.ceil(groups_count / 2.0))
+    groups_to_drop = random.sample(test_helper.groups, groups_count_to_drop)
+    dropped_groups = drop_groups(test_helper, groups_to_drop)
+
+    available_groups = {}
+    ag = [g for g in test_helper.groups if g not in dropped_groups.keys()]
+    for g in ag:
+        available_groups[g] = [n for n in nodes if n.group == g]
+
+    def fin():
+        test_helper.resume_all_nodes()
+        time.sleep(60)
+
+    request.addfinalizer(fin)
+
+    return test_helper, key, dropped_groups, available_groups
+
+@pytest.mark.keepalive
+def test_keepalive(prepare_keepalive_check):
+    """Testing that reading files from unavailable groups will raise the
+    elliptics.Error("...No such device or address: -6") after certain time of downtime
+    """
+    test_helper, key, unavailable_groups, available_groups = prepare_keepalive_check
+
+    for g in available_groups.keys():
+        test_helper.read_data_from_groups_sync(key, [g])
+
+    for g in unavailable_groups.keys():
+        assert_that(calling(test_helper.read_data_from_groups_sync).with_args(key, [g]),
+                    calling(elliptics.TimeoutError))
+
+    wait_routes_list_update(test_helper)
+
+    for g in available_groups.keys():
+        test_helper.read_data_from_groups_sync(key, [g])
+
+    for g in unavailable_groups.keys():
+        assert_that(calling(test_helper.read_data_from_groups_sync).with_args(key, [g]),
+                    raises(elliptics.Error, test_helper.error_info.AddrNotExists))
+
+    test_helper.resume_all_nodes()
+    time.sleep(60)
+
+    for g in test_helper.groups:
+        test_helper.read_data_from_groups_sync(key, [g])
