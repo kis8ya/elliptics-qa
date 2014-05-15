@@ -7,7 +7,8 @@ import argparse
 import math
 
 from collections import defaultdict
-from hamcrest import assert_that, raises, calling, equal_to, has_length, has_items
+from hamcrest import assert_that, raises, calling, equal_to, has_length
+from hamcrest.core.base_matcher import BaseMatcher
 
 import elliptics
 
@@ -21,6 +22,34 @@ files_size = pytest.config.getoption("files_size")
 files_number = pytest.config.getoption("files_number")
 
 timeout = pytest.config.getoption("test_timeout")
+
+#TODO: compare this custom matcher with standard:
+# assert_that(results_ids,
+#             described_as("a sequence has the %0 elements",
+#             has_items(*ids_with_indexes),
+#             len(ids_with_indexes)))
+#
+class HasItems(BaseMatcher):
+    def __init__(self, *elements):
+        self.elements = elements
+
+    def matches(self, item, mismatch_description=None):
+        self.diff = set(self.elements).difference(set(item))
+        return len(self.diff) == 0
+
+    def describe_to(self, description):
+        description.append_text("a sequence has the {0} elements".format(len(self.elements)))
+
+    def describe_mismatch(self, item, mismatch_description):
+        if len(self.diff) >= 3:
+            sample = random.sample(self.diff, 3)
+        else:
+            sample = self.diff
+        sample = map(str, sample)
+        mismatch_description.append_text("got {0} elements difference ([{1}...])".format(len(self.diff), ', '.join(sample)))
+
+def hasitems(*elements):
+    return HasItems(*elements)
 
 def key_and_data():
     if files_size:
@@ -251,7 +280,8 @@ def test_merge_add_two_nodes(write_data_when_two_dropped):
 def write_indexes_when_groups_dropped(request):
     """Drops half groups, writes data then resume all nodes from these groups
     """
-    indexes = ["index1", "index2", "index3", "index4", "index5"]
+    # Generate 5 random indexes
+    indexes = map(str, random.sample(xrange(10000000), 5))
 
     good_keys = defaultdict(list)
     key_count = 127
@@ -304,8 +334,8 @@ def write_indexes_when_groups_dropped(request):
 
 @pytest.mark.dc
 @pytest.mark.timeout(timeout)
-def test_indexes_dc(write_indexes_when_groups_dropped):
-    """Tests that 'dnet_recovery --remote ... dc'
+def test_indexes_dc_onenode(write_indexes_when_groups_dropped):
+    """Tests that 'dnet_recovery --remote ... --one-node dc'
     will recover all keys for every dropped group
     when there were half groups dropped
     """
@@ -369,4 +399,55 @@ def test_indexes_dc(write_indexes_when_groups_dropped):
         result = client.find_all_indexes([i]).get()
         result_ids = [r.id for r in result]
         ids_with_index = [client.transform(k) for k, v in good_keys.items() if i in v]
-        assert_that(result_ids, has_items(*ids_with_index))
+        assert_that(result_ids, hasitems(*ids_with_index))
+
+@pytest.mark.dc
+@pytest.mark.timeout(timeout)
+def test_indexes_dc(write_indexes_when_groups_dropped):
+    """Tests that 'dnet_recovery --remote ... dc'
+    will recover all keys for every dropped group
+    when there were half groups dropped
+    """
+    good_keys, bad_keys, dropped_groups, indexes = write_indexes_when_groups_dropped
+    bad_groups = [int(g) for g in dropped_groups.keys()]
+    ring_partitioning = RingPartitioning(client)
+
+    # check that "good" keys are accessible in all groups
+    for g in client.groups:
+        for k in good_keys.keys():
+            client.read_data_from_groups_sync(k, [g])
+
+    # check that "bad" keys are not accessible in "dropped" groups
+    for k in bad_keys.keys():
+        assert_that(calling(client.read_data_from_groups_sync).with_args(k, bad_groups),
+                    raises(elliptics.NotFoundError))
+
+    # check that recovered keys are accessible in all groups
+    good_groups = [g for g in client.groups if g not in bad_groups]
+    for g in good_groups:
+        for k in bad_keys.keys():
+            client.read_data_from_groups_sync(k, [g])
+
+    n = random.randint(0, len(nodes) - 1)
+    cmd = ["dnet_recovery",
+           "--remote", "{0}:{1}:2".format(nodes[n].host, nodes[n].port),
+           "--groups", ','.join(map(str, client.groups)),
+           "dc"]
+    print(cmd)
+    subprocess.call(cmd)
+
+    for k, v in bad_keys.items():
+        good_keys[k].extend(v)
+
+    # check all keys
+    for g in client.groups:
+        for k in good_keys.keys():
+            data = client.read_data_from_groups_sync(k, [g]).pop().data
+            assert_that(k, equal_to(et.utils.get_sha1(data)))
+
+    # check indexes
+    for i in indexes:
+        result = client.find_all_indexes([i]).get()
+        result_ids = [r.id for r in result]
+        ids_with_index = [client.transform(k) for k, v in good_keys.items() if i in v]
+        assert_that(result_ids, hasitems(*ids_with_index))
