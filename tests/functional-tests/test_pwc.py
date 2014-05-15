@@ -202,9 +202,9 @@ def test_pwc_psize_more_than_csize_negative(timestamp, user_flags):
                                                   data=data)))
 
 @pytest.mark.pwctest
-def test_pwc_psize_less_than_csize_negative():
+def test_pwc_psize_less_than_plainsize_negative():
     """ Testing prepare-write-commit
-    when data length < prepare_size < commit_size
+    when prepare_size < data_size (write_plain)
     """
     key, data = utils.get_key_and_data_list()
     data_len = get_length(data)
@@ -213,6 +213,21 @@ def test_pwc_psize_less_than_csize_negative():
     testhelper.write_prepare_sync(key, data[0], 0, data_len - sub_len)
 
     assert_that(calling(testhelper.write_plain_sync).with_args(key, data[1], len(data[0])),
+                raises(elliptics.Error, testhelper.error_info.WrongArguments))
+
+@pytest.mark.pwctest
+def test_pwc_psize_less_than_csize_negative():
+    """ Testing prepare-write-commit
+    when prepare_size < commit_size
+    """
+    key, data = utils.get_key_and_data_list()
+    data_len = get_length(data)
+
+    sub_len = random.randint(1, len(data[2]) - 1)
+    testhelper.write_prepare_sync(key, data[0], 0, data_len - sub_len)
+    testhelper.write_plain_sync(key, data[1], len(data[0]))
+
+    assert_that(calling(testhelper.write_commit_sync).with_args(key, data[2], len(data[0]) + len(data[1]), data_len),
                 raises(elliptics.Error, testhelper.error_info.WrongArguments))
 
 @pytest.mark.pwctest
