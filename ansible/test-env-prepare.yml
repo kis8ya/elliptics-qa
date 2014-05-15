@@ -14,11 +14,6 @@
       with_items:
         - pytest
         - pytest-xdist
+        - pytest-timeout
         - pyhamcrest
         - requests
-
-    - name: Copy test files
-      copy: src={{ repo_dir }}/tests dest={{ remote_repo_dir }}
-
-    - name: Copy lib files
-      copy: src={{ repo_dir }}/lib dest={{ remote_repo_dir }}

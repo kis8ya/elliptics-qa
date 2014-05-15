@@ -84,6 +84,7 @@ class EllipticsTestHelper(elliptics.Session):
     _log_path = "/var/log/elliptics/client.log"
     
     DROP_RULES = ["INPUT --proto tcp --destination-port {port} --jump DROP",
+                  "INPUT --proto tcp --source-port {port} --jump DROP",
                   "OUTPUT --proto tcp --destination-port {port} --jump DROP",
                   "OUTPUT --proto tcp --source-port {port} --jump DROP"]
 

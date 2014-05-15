@@ -15,7 +15,7 @@ def client():
     return client
 
 def test_cache_overhead(client):
-    """Testing that elliptics will processed commands just in time
+    """Testing that elliptics will process commands just in time
     when there is a cache overhead
     """
     count = 100000
