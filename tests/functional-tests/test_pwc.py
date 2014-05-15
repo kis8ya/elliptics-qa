@@ -209,7 +209,7 @@ def test_pwc_psize_less_than_csize_negative():
     key, data = utils.get_key_and_data_list()
     data_len = get_length(data)
 
-    sub_len = random.randint(1, len(data[1]) + len(data[2]) - 1)
+    sub_len = random.randint(len(data[2]) + 1, len(data[1]) + len(data[2]) - 1)
     testhelper.write_prepare_sync(key, data[0], 0, data_len - sub_len)
 
     assert_that(calling(testhelper.write_plain_sync).with_args(key, data[1], len(data[0])),
