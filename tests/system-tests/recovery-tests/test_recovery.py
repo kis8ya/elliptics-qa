@@ -334,7 +334,7 @@ def write_indexes_when_groups_dropped(request):
 
 @pytest.mark.dc
 @pytest.mark.timeout(timeout)
-def test_indexes_dc_onenode(write_indexes_when_groups_dropped):
+def test_one_node_dc_with_indexes(write_indexes_when_groups_dropped):
     """Tests that 'dnet_recovery --remote ... --one-node dc'
     will recover all keys for every dropped group
     when there were half groups dropped
@@ -403,7 +403,7 @@ def test_indexes_dc_onenode(write_indexes_when_groups_dropped):
 
 @pytest.mark.dc
 @pytest.mark.timeout(timeout)
-def test_indexes_dc(write_indexes_when_groups_dropped):
+def test_dc_with_indexes(write_indexes_when_groups_dropped):
     """Tests that 'dnet_recovery --remote ... dc'
     will recover all keys for every dropped group
     when there were half groups dropped
@@ -430,6 +430,58 @@ def test_indexes_dc(write_indexes_when_groups_dropped):
 
     n = random.randint(0, len(nodes) - 1)
     cmd = ["dnet_recovery",
+           "--remote", "{0}:{1}:2".format(nodes[n].host, nodes[n].port),
+           "--groups", ','.join(map(str, client.groups)),
+           "dc"]
+    print(cmd)
+    subprocess.call(cmd)
+
+    for k, v in bad_keys.items():
+        good_keys[k].extend(v)
+
+    # check all keys
+    for g in client.groups:
+        for k in good_keys.keys():
+            data = client.read_data_from_groups_sync(k, [g]).pop().data
+            assert_that(k, equal_to(et.utils.get_sha1(data)))
+
+    # check indexes
+    for i in indexes:
+        result = client.find_all_indexes([i]).get()
+        result_ids = [r.id for r in result]
+        ids_with_index = [client.transform(k) for k, v in good_keys.items() if i in v]
+        assert_that(result_ids, hasitems(*ids_with_index))
+
+@pytest.mark.dc
+@pytest.mark.timeout(timeout)
+def test_nprocess_dc_with_indexes(write_indexes_when_groups_dropped):
+    """Tests that 'dnet_recovery --nprocess=3 --remote ... dc'
+    will recover all keys for every dropped group
+    when there were half groups dropped
+    """
+    good_keys, bad_keys, dropped_groups, indexes = write_indexes_when_groups_dropped
+    bad_groups = [int(g) for g in dropped_groups.keys()]
+    ring_partitioning = RingPartitioning(client)
+
+    # check that "good" keys are accessible in all groups
+    for g in client.groups:
+        for k in good_keys.keys():
+            client.read_data_from_groups_sync(k, [g])
+
+    # check that "bad" keys are not accessible in "dropped" groups
+    for k in bad_keys.keys():
+        assert_that(calling(client.read_data_from_groups_sync).with_args(k, bad_groups),
+                    raises(elliptics.NotFoundError))
+
+    # check that recovered keys are accessible in all groups
+    good_groups = [g for g in client.groups if g not in bad_groups]
+    for g in good_groups:
+        for k in bad_keys.keys():
+            client.read_data_from_groups_sync(k, [g])
+
+    n = random.randint(0, len(nodes) - 1)
+    cmd = ["dnet_recovery",
+           "--nprocess", "3",
            "--remote", "{0}:{1}:2".format(nodes[n].host, nodes[n].port),
            "--groups", ','.join(map(str, client.groups)),
            "dc"]
