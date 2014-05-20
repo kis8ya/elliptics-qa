@@ -1,5 +1,4 @@
 import pytest
-import sys
 import random
 import itertools
 
@@ -56,9 +55,6 @@ def ids(pytestconfig, client):
     ids = defaultdict(dict)
     idata = IterableData(count * indexes_count)
 
-    sys.stdout.write("\n0/{0}".format(count))
-    sys.stdout.flush()
-
     for j in xrange(batches_count):
         async_results = []
         for i in xrange(files_count):
@@ -74,9 +70,6 @@ def ids(pytestconfig, client):
             key_index_data_list = idata.nextn(len(indexes_ids))
 
             async_results.append(client.set_indexes(key, key_indexes, key_index_data_list))
-
-            sys.stdout.write('\r{0}/{1}'.format(n + 1, count))
-            sys.stdout.flush()
 
             ids[key_id] = dict(zip(indexes_ids, key_index_data_list))
 
