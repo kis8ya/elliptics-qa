@@ -55,21 +55,25 @@ def time_requests(client, requests_count, hot_keys, cold_keys):
     return result_time
 
 def test_cache_lru(client, requests_number):
+    """Testing that data requests will take not too much more time
+    after stuffing cache with unused data
+    """
     hot_keys_count = 5000
     cold_keys_count = 45000
-    hot_keys = [str(i) for i in xrange(hot_keys_count)]
-    cold_keys = [str(i) for i in xrange(hot_keys_count, cold_keys_count + hot_keys_count)]
-    data = '?'
+    hot_keys = map(str, xrange(hot_keys_count))
+    cold_keys = map(str, xrange(hot_keys_count, cold_keys_count + hot_keys_count))
 
     for k in hot_keys + cold_keys:
-        client.write_data_sync(k, data)
+        client.write_data_sync(k, '?')
 
     time_before = time_requests(client, requests_number, hot_keys, cold_keys)
 
+    # Stuffing cache
     key, data = get_key_and_data(5*MB, randomize_len=False)
+    client.write_data_sync(key, data)
 
     time_after = time_requests(client, requests_number, hot_keys, cold_keys)
 
     diff_time = time_after - time_before
-    allowed_time_overhead = time_before * 0.1
-    assert_that(diff_time, less_than_or_equal_to(allowed_time_overhead))
+    allowed_overhead_time = time_before * 0.1
+    assert_that(diff_time, less_than_or_equal_to(allowed_overhead_time))
