@@ -11,6 +11,8 @@ config: /etc/elliptics.conf
 blob_size: 2G
 cache_size: 20971520
 cache_sync_timeout: 60
+cache_numbers: 16
+cache_pages_proportions: [4, 2]
 
 # Test paramaters
 check_timeout: 30

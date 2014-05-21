@@ -195,7 +195,8 @@ class TestRunner(object):
                                                 clients_count=self.instances_params["clients"]["count"],
                                                 servers_per_group=[self.instances_params["servers"]["count"]],
                                                 groups=groups,
-                                                instances_names=self.instances_names)
+                                                instances_names=self.instances_names,
+                                                force_expand_names=True)
 
         vars_path = self._get_vars_path('clients')
         ansible_manager.update_vars(vars_path=vars_path,

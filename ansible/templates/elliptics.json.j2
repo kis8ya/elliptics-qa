@@ -23,7 +23,8 @@
     "auth_cookie": "ellicoca",
     "cache": {
       "size": {{ cache_size }},
-      "shards": 16,
+      "shards": {{ cache_numbers }},
+      "pages_proportions": {{ cache_pages_proportions }},
       "sync_timeout": {{ cache_sync_timeout }}
     }
   },

@@ -1,9 +1,15 @@
 import pytest
 import sys
+import time
+import random
 
 import elliptics
 
+from hamcrest import assert_that, less_than_or_equal_to
+
 import elliptics_testhelper as et
+
+from utils import get_key_and_data, MB
 
 @pytest.fixture(scope='function')
 def client():
@@ -28,3 +34,42 @@ def test_cache_overhead(client):
         if pytest.config.getoption("show_progress"):
             sys.stdout.write('\r{0}/{1}'.format(i + 1, count))
             sys.stdout.flush()
+
+@pytest.fixture
+def requests_number(pytestconfig):
+    return pytestconfig.option.requests_number
+
+def time_requests(client, requests_count, hot_keys, cold_keys):
+    start_time = time.time()
+
+    hot_requests_percentage = 0.8
+    for i in xrange(requests_count):
+        if random.random() < hot_requests_percentage:
+            key = random.choice(hot_keys)
+        else:
+            key = random.choice(cold_keys)
+        client.read_data_sync(key)
+
+    result_time = time.time() - start_time
+
+    return result_time
+
+def test_cache_lru(client, requests_number):
+    hot_keys_count = 5000
+    cold_keys_count = 45000
+    hot_keys = [str(i) for i in xrange(hot_keys_count)]
+    cold_keys = [str(i) for i in xrange(hot_keys_count, cold_keys_count + hot_keys_count)]
+    data = '?'
+
+    for k in hot_keys + cold_keys:
+        client.write_data_sync(k, data)
+
+    time_before = time_requests(client, requests_number, hot_keys, cold_keys)
+
+    key, data = get_key_and_data(5*MB, randomize_len=False)
+
+    time_after = time_requests(client, requests_number, hot_keys, cold_keys)
+
+    diff_time = time_after - time_before
+    allowed_time_overhead = time_before * 0.1
+    assert_that(diff_time, less_than_or_equal_to(allowed_time_overhead))
