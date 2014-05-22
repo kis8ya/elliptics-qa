@@ -115,6 +115,35 @@ def changed_ids(pytestconfig, client, ids):
 
     return changed_ids
 
+@pytest.fixture(scope='module')
+def updated_ids(pytestconfig, client, ids):
+    count = pytestconfig.option.files_per_batch
+
+    updated_ids = {}
+    ids_to_update = random.sample(ids.keys(), count)
+    
+    idata = IterableData(count * indexes_count)
+    async_results = []
+    for i in ids_to_update:
+        key_id = hex_to_id(i)
+
+        key_indexes_count = random.randint(1, len(indexes) - 1)
+        key_indexes = random.sample(indexes, key_indexes_count)
+        indexes_ids = map(client.transform, key_indexes)
+        indexes_ids = map(str, indexes_ids)
+        key_index_data_list = idata.nextn(len(indexes_ids))
+
+        async_results.append(client.update_indexes(key_id, key_indexes, key_index_data_list))
+
+        ids[i].update(dict(zip(indexes_ids, key_index_data_list)))
+
+        updated_ids[i] = ids[i]
+
+    for r in async_results:
+        r.get()
+
+    return updated_ids
+
 def check_find_all_indexes(index_list, client, ids):
     result = client.find_all_indexes(index_list).get()
 
@@ -189,6 +218,7 @@ def check_list_indexes(client, ids):
 def test_list_indexes(client, ids):
     check_list_indexes(client, ids)
 
+# change indexes tests
 def test_list_indexes_after_change(client, changed_ids, ids):
     check_list_indexes(client, changed_ids)
 
@@ -199,4 +229,17 @@ def test_find_all_indexes_after_change(test_class_name, index_list, client, ids)
 @pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
 def test_find_any_indexes_after_change(test_class_name, index_list, client, ids):
     check_find_any_indexes(index_list, client, ids)
+#END of change indexes
 
+# update indexes tests
+def test_list_indexes_after_update(client, updated_ids, ids):
+    check_list_indexes(client, updated_ids)
+
+@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
+def test_find_all_indexes_after_update(test_class_name, index_list, client, ids):
+    check_find_all_indexes(index_list, client, ids)
+
+@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
+def test_find_any_indexes_after_update(test_class_name, index_list, client, ids):
+    check_find_any_indexes(index_list, client, ids)
+#END of update indexes tests
