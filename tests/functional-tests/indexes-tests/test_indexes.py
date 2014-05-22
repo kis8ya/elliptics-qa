@@ -1,6 +1,7 @@
 import pytest
 import random
 import itertools
+import elliptics
 
 from collections import defaultdict
 
@@ -131,3 +132,19 @@ def test_find_any_indexes(test_class_name, index_list, client, ids):
             assert_that(ids[result_key_id].get(result_index_id), not_none())
             assert_that(ri.data, equal_to(ids[result_key_id][result_index_id]))
 
+def hex_to_id(hex_string):
+    result = [hex_string[i:i+2] for i in xrange(0, len(hex_string), 2)]
+    result = [int(x, 16) for x in result]
+    result = elliptics.Id(result)
+    return result
+
+def test_list_indexes(client, ids):
+    for i, indexes in ids.items():
+        key_id = hex_to_id(i)
+        result_indexes = client.list_indexes(key_id).get()
+
+        assert_that(result_indexes, has_length(len(indexes)))
+        for result_index in result_indexes:
+            result_index_id = str(result_index.index)
+            assert_that(indexes.get(result_index_id), not_none())
+            assert_that(indexes[result_index_id], equal_to(result_index.data))
