@@ -21,6 +21,12 @@ def sample_classes(seq, classes):
     for name, class_func in classes.items():
         result[name] = class_func(seq)
     return result
+
+def hex_to_id(hex_string):
+    result = [hex_string[i:i+2] for i in xrange(0, len(hex_string), 2)]
+    result = [int(x, 16) for x in result]
+    result = elliptics.Id(result)
+    return result
 #END of utility functions
 
 indexes_count = 5
@@ -51,9 +57,10 @@ class IterableData(object):
 def ids(pytestconfig, client):
     batches_count = pytestconfig.option.batches_number
     files_count = pytestconfig.option.files_per_batch
+
     count = batches_count * files_count
     data = '?'
-    ids = defaultdict(dict)
+    ids = {}
     idata = IterableData(count * indexes_count)
 
     for j in xrange(batches_count):
@@ -79,8 +86,36 @@ def ids(pytestconfig, client):
 
     return ids
 
-@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
-def test_find_all_indexes(test_class_name, index_list, client, ids):
+@pytest.fixture(scope='module')
+def changed_ids(pytestconfig, client, ids):
+    count = pytestconfig.option.files_per_batch
+
+    changed_ids = {}
+    ids_to_change = random.sample(ids.keys(), count)
+    
+    idata = IterableData(count * indexes_count)
+    async_results = []
+    for i in ids_to_change:
+        key_id = hex_to_id(i)
+
+        key_indexes_count = random.randint(1, len(indexes) - 1)
+        key_indexes = random.sample(indexes, key_indexes_count)
+        indexes_ids = map(client.transform, key_indexes)
+        indexes_ids = map(str, indexes_ids)
+        key_index_data_list = idata.nextn(len(indexes_ids))
+
+        async_results.append(client.set_indexes(key_id, key_indexes, key_index_data_list))
+
+        ids[i] = dict(zip(indexes_ids, key_index_data_list))
+
+        changed_ids[i] = ids[i]
+
+    for r in async_results:
+        r.get()
+
+    return changed_ids
+
+def check_find_all_indexes(index_list, client, ids):
     result = client.find_all_indexes(index_list).get()
 
     index_id_list = map(client.transform, index_list)
@@ -106,7 +141,10 @@ def test_find_all_indexes(test_class_name, index_list, client, ids):
             assert_that(ri.data, equal_to(ids[result_key_id][result_index_id]))
 
 @pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
-def test_find_any_indexes(test_class_name, index_list, client, ids):
+def test_find_all_indexes(test_class_name, index_list, client, ids):
+    check_find_all_indexes(index_list, client, ids)
+
+def check_find_any_indexes(index_list, client, ids):
     result = client.find_any_indexes(index_list).get()
 
     index_id_list = map(client.transform, index_list)
@@ -132,13 +170,12 @@ def test_find_any_indexes(test_class_name, index_list, client, ids):
             assert_that(ids[result_key_id].get(result_index_id), not_none())
             assert_that(ri.data, equal_to(ids[result_key_id][result_index_id]))
 
-def hex_to_id(hex_string):
-    result = [hex_string[i:i+2] for i in xrange(0, len(hex_string), 2)]
-    result = [int(x, 16) for x in result]
-    result = elliptics.Id(result)
-    return result
 
-def test_list_indexes(client, ids):
+@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
+def test_find_any_indexes(test_class_name, index_list, client, ids):
+    check_find_any_indexes(index_list, client, ids)
+
+def check_list_indexes(client, ids):
     for i, indexes in ids.items():
         key_id = hex_to_id(i)
         result_indexes = client.list_indexes(key_id).get()
@@ -148,3 +185,18 @@ def test_list_indexes(client, ids):
             result_index_id = str(result_index.index)
             assert_that(indexes.get(result_index_id), not_none())
             assert_that(indexes[result_index_id], equal_to(result_index.data))
+
+def test_list_indexes(client, ids):
+    check_list_indexes(client, ids)
+
+def test_list_indexes_after_change(client, changed_ids, ids):
+    check_list_indexes(client, changed_ids)
+
+@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
+def test_find_all_indexes_after_change(test_class_name, index_list, client, ids):
+    check_find_all_indexes(index_list, client, ids)
+
+@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
+def test_find_any_indexes_after_change(test_class_name, index_list, client, ids):
+    check_find_any_indexes(index_list, client, ids)
+
