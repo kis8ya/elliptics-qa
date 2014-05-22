@@ -173,6 +173,32 @@ def internal_updated_ids(pytestconfig, client, ids):
 
     return internal_updated_ids
 
+@pytest.fixture(scope='module')
+def removed_ids(pytestconfig, client, ids):
+    count = pytestconfig.option.files_per_batch
+
+    removed_ids = {}
+    ids_to_remove = random.sample(ids.keys(), count)
+    
+    async_results = []
+    for i in ids_to_remove:
+        key_id = hex_to_id(i)
+
+        key_indexes = []
+        indexes_ids = []
+        key_index_data_list = []
+
+        async_results.append(client.set_indexes(key_id, key_indexes, key_index_data_list))
+
+        ids[i] = dict(zip(indexes_ids, key_index_data_list))
+
+        removed_ids[i] = ids[i]
+
+    for r in async_results:
+        r.get()
+
+    return removed_ids
+
 def check_find_all_indexes(index_list, client, ids):
     result = client.find_all_indexes(index_list).get()
 
@@ -285,3 +311,18 @@ def test_find_all_indexes_after_internal_update(test_class_name, index_list, cli
 def test_find_any_indexes_after_internal_update(test_class_name, index_list, client, ids):
     check_find_any_indexes(index_list, client, ids)
 #END of update_indexes_internal tests
+
+# remove indexes tests
+def test_list_indexes_after_remove(client, removed_ids, ids):
+    check_list_indexes(client, removed_ids)
+
+@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
+def test_find_all_indexes_after_remove(test_class_name, index_list, client, ids):
+    pytest.skip("unknown behavior")
+    check_find_all_indexes(index_list, client, ids)
+
+@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
+def test_find_any_indexes_after_remove(test_class_name, index_list, client, ids):
+    pytest.skip("unknown behavior")
+    check_find_any_indexes(index_list, client, ids)
+#END of remove indexes tests
