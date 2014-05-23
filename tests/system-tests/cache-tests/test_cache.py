@@ -1,5 +1,4 @@
 import pytest
-import sys
 import time
 import random
 
@@ -10,6 +9,7 @@ from hamcrest import assert_that, less_than_or_equal_to
 import elliptics_testhelper as et
 
 from utils import get_key_and_data, MB
+from logging_tests import logger
 
 @pytest.fixture(scope='function')
 def client():
@@ -25,15 +25,11 @@ def test_cache_overhead(client):
     when there is a cache overhead
     """
     count = 100000
-    if pytest.config.getoption("show_progress"):
-        sys.stdout.write("\n0/{0}".format(count))
-        sys.stdout.flush()
+    logger.info("\n0/{0}".format(count))
     for i in xrange(count):
         key = str(i)
         client.write_data_sync(key, '?')
-        if pytest.config.getoption("show_progress"):
-            sys.stdout.write('\r{0}/{1}'.format(i + 1, count))
-            sys.stdout.flush()
+        logger.info('\r{0}/{1}'.format(i + 1, count))
 
 @pytest.fixture
 def requests_number(pytestconfig):

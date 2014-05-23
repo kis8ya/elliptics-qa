@@ -60,15 +60,19 @@ def qa_storage_upload(file_path):
 
     return url
 
-def set_teamcity_messaging_level(level):
-    """Sets/unsets logging level for teamcity_messages module
+def set_logging_level(level):
+    """Sets/unsets logging level for teamcity_messages and logging_tests modules
     (level = true|false => logging_level = INFO|ERROR)
     """
-    conf_file = 'lib/teamcity_messages.conf'
+    conf_file = 'lib/loggers.ini'
     parser = ConfigParser.ConfigParser()
     parser.read([conf_file])
-    logging_level = "INFO" if level else "ERROR"
-    parser.set('logger_teamcityLogger', 'level', logging_level)
+
+    tc_logging_level = "INFO" if level else "ERROR"
+    tests_logging_level = "ERROR" if level else "INFO"
+    parser.set('logger_teamcityLogger', 'level', tc_logging_level)
+    parser.set('logger_testLogger', 'level', tests_logging_level)
+
     with open(conf_file, "w") as conf:
         parser.write(conf)
 
@@ -270,12 +274,19 @@ class TestRunner(object):
                                                                                                  test["test_env_cfg"]["servers"]["count_per_group"]))
 
     def run(self, test_name):
+        files_to_sync = ["elliptics_testhelper.py", "utils.py", "logging_tests.py", "loggers.ini"]
+        rsyncdir_opts = "--rsyncdir tests/{0}/".format(self.tests[test_name]["dir"])
+        for f in files_to_sync:
+            rsyncdir_opts += " --rsyncdir lib/{0}".format(f)
+
         if self.teamcity:
             opts = '--teamcity'
         else:
             opts = ''
-        opts += ' -d --tx ssh="{0}.i.fog.yandex.net -l root -q" --rsyncdir lib/elliptics_testhelper.py --rsyncdir lib/utils.py --rsyncdir tests/{1}/ tests/{1}/'
-        opts = opts.format(self.instances_names['client'], self.tests[test_name]["dir"])
+        opts += ' -d --tx ssh="{0}.i.fog.yandex.net -l root -q" {1} tests/{2}/'
+        opts = opts.format(self.instances_names['client'],
+                           rsyncdir_opts,
+                           self.tests[test_name]["dir"])
         if self.verbose_output:
             print(opts)
         pytest.main(opts)
@@ -314,7 +325,7 @@ if __name__ == "__main__":
     parser.add_argument('--teamcity', action="store_true", dest="teamcity")
     args = parser.parse_args()
 
-    set_teamcity_messaging_level(args.teamcity)
+    set_logging_level(args.teamcity)
 
     testrunner = TestRunner(args)
     testrunner.run_tests()

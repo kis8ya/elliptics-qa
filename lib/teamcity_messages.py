@@ -2,6 +2,9 @@ import os.path
 import logging
 import logging.config
 
+#TODO: remove this import (it was added to register custom handler from logging_tests)
+import logging_tests
+
 class block(object):
     """Prints teamcity service messages to combine output in a single block.
     There is a config file for the module (teamcity_messages.conf);
@@ -37,8 +40,8 @@ class block(object):
         self.logger.info("##teamcity[blockClosed name='{0}']".format(self.name))
 
     def create_logger(self):
-        conf_file = os.path.splitext(__file__)[0]
-        conf_file += '.conf'
+        conf_file = os.path.dirname(__file__)
+        conf_file = os.path.join(conf_file, 'loggers.ini')
         logging.config.fileConfig(conf_file)
         self.logger = logging.getLogger('teamcityLogger')
 
