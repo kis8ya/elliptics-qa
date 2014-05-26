@@ -1,7 +1,6 @@
 """This module allows to add some output for tests
-which you don't want to be displayed in TeamCity build log.
+which should not be displayed in TeamCity build log.
 """
-import sys
 import os.path
 import logging
 import logging.config
@@ -11,12 +10,9 @@ class NoNewlineHandler(logging.StreamHandler):
     """Sends logging output to file-like objects
     (w/o newline symbol)
     """
-    def __init__(self, stream=None):
-        logging.StreamHandler.__init__(self, stream)
-    
     def emit(self, record):
         """Emits a record.
-        Note: it has flushed output each write.
+        Note: it has flushed output on each write.
         """
         msg = self.format(record)
         self.stream.write('%s' % msg)
@@ -26,7 +22,7 @@ class NoNewlineHandler(logging.StreamHandler):
 logging.handlers.NoNewlineHandler = NoNewlineHandler
 
 _conf_file = os.path.dirname(__file__)
-_conf_file = os.path.join(_conf_file, 'loggers.ini')
+_conf_file = os.path.join(_conf_file, 'logger.ini')
 logging.config.fileConfig(_conf_file)
 
 logger = logging.getLogger('testLogger')

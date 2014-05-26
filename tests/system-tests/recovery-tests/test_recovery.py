@@ -15,6 +15,7 @@ import elliptics
 import elliptics_testhelper as et
 
 from utils import MB, get_key_and_data
+from logging_tests import logger
 
 nodes = et.EllipticsTestHelper.get_nodes_from_args(pytest.config.getoption("node"))
 client = et.EllipticsTestHelper(nodes=nodes, wait_timeout=25, check_timeout=30)
@@ -23,12 +24,6 @@ files_number = pytest.config.getoption("files_number")
 
 timeout = pytest.config.getoption("test_timeout")
 
-#TODO: compare this custom matcher with standard:
-# assert_that(results_ids,
-#             described_as("a sequence has the %0 elements",
-#             has_items(*ids_with_indexes),
-#             len(ids_with_indexes)))
-#
 class HasItems(BaseMatcher):
     def __init__(self, *elements):
         self.elements = elements
@@ -119,7 +114,7 @@ def write_data_when_dropped(nodes_number):
     good_keys = defaultdict(list)
     bad_keys = defaultdict(list)
     data_size = 0
-    print("Started writing {0} files".format(files_number))
+    logger.info("Started writing {0} files\n".format(files_number))
     for i in xrange(files_number):
         key, data = key_and_data()
         elliptics_id =  client.transform(key)
@@ -134,29 +129,13 @@ def write_data_when_dropped(nodes_number):
             bad_keys[current_host].append(key)
 
         data_size += len(data)
-    print("Finished writing files")
+
+        logger.info("\r{0}/{1}".format(i + 1, files_number))
+    logger.info("\nFinished writing files\n")
 
     bad_key_count = sum([len(v) for v in bad_keys.values()])
-    print("\nDEBUG: with dropped {0} nodes there are {1}/{2} bad keys\ndata size: {3} MB".format(
+    logger.info("with dropped {0} nodes there are {1}/{2} bad keys\ndata size: {3} MB\n".format(
             [n.host for n in dropped_nodes], bad_key_count, files_number, data_size / MB))
-
-    #TODO: delete this debug output
-    print("bad keys")
-    for k, v in bad_keys.items():
-        print("{0}: {1} bad keys".format(k, len(v)))
-        if len(v) >= 3:
-            sk = random.sample(v, 3)
-        else:
-            sk = v
-        print(sk)
-    print("good keys")
-    for k, v in good_keys.items():
-        print("{0}: {1} good keys".format(k, len(v)))
-        if len(v) >= 3:
-            sk = random.sample(v, 3)
-        else:
-            sk = v
-        print(sk)
 
     for n in dropped_nodes:
         client.resume_node(n)
@@ -210,7 +189,7 @@ def test_one_node_option(write_data_when_two_dropped):
                "--one-node",
                "merge"]
 
-        print(cmd)
+        logger.info("{0}\n".format(cmd))
         subprocess.call(cmd)
 
         key_list = []
@@ -221,14 +200,12 @@ def test_one_node_option(write_data_when_two_dropped):
                 bad_key_list.remove(k)
 
         # check that keys are accessible
-        print("check that keys are accessible: {0}".format(len(key_list)))
         for k in key_list:
             client.read_data_sync(k)
 
         recovered_keys.extend(key_list)
 
         # check that "bad" keys are not accessible yet
-        print("check that bad keys are not accessible yet: {0}".format(len(bad_key_list)))
         for k in bad_key_list:
             assert_that(calling(client.read_data_sync).with_args(k),
                         raises(elliptics.NotFoundError))
@@ -236,7 +213,6 @@ def test_one_node_option(write_data_when_two_dropped):
     # check accessibility for all keys
     good_key_list = [i for v in good_keys.values() for i in v]
     all_keys = recovered_keys + good_key_list
-    print("check accessibility for all keys: {0}".format(len(good_key_list)))
     for k in all_keys:
         data = client.read_data_sync(k).pop().data
         assert_that(k, equal_to(et.utils.get_sha1(data)))
@@ -266,7 +242,7 @@ def test_merge_add_two_nodes(write_data_when_two_dropped):
            "--remote", "{0}:{1}:2".format(node.host, node.port),
            "--groups", ','.join(map(str, client.groups)),
            "merge"]
-    print(cmd)
+    logger.info("{0}\n".format(cmd))
     subprocess.call(cmd)
 
     # check all keys and data
@@ -285,17 +261,19 @@ def write_indexes_when_groups_dropped(request):
 
     good_keys = defaultdict(list)
     key_count = 127
-    print("Started writing {0} files".format(key_count))
+    logger.info("Started writing {0} files\n".format(key_count))
     for i in xrange(key_count):
         key, data = key_and_data()
         indexes_count = random.randint(1, len(indexes) - 1)
         key_indexes = random.sample(indexes, indexes_count)
-        index_data = ["idata_{0}".format(i) for i in key_indexes]
+        index_data = ["idata_{0}".format(k) for k in key_indexes]
 
         client.write_data_sync(key, data)
         client.set_indexes(key, key_indexes, index_data).get()
         good_keys[key].extend(key_indexes)
-    print("Finished writing files")
+
+        logger.info("\r{0}/{1}".format(i + 1, key_count))
+    logger.info("\nFinished writing files\n")
 
     # Drop nodes
     groups_count = len(client.groups)
@@ -307,17 +285,19 @@ def write_indexes_when_groups_dropped(request):
 
     # Write "bad" keys
     bad_keys = defaultdict(list)
-    print("Started writing {0} files".format(files_number))
+    logger.info("Started writing {0} files\n".format(files_number))
     for i in xrange(files_number):
         key, data = key_and_data()
         indexes_count = random.randint(1, len(indexes) - 1)
         key_indexes = random.sample(indexes, indexes_count)
-        index_data = ["idata_{0}".format(i) for i in key_indexes]
+        index_data = ["idata_{0}".format(k) for k in key_indexes]
 
         client.write_data_sync(key, data)
         client.set_indexes(key, key_indexes, index_data).get()
         bad_keys[key].extend(key_indexes)
-    print("Finished writing files")
+
+        logger.info("\r{0}/{1}".format(i + 1, files_number))
+    logger.info("\nFinished writing files\n")
 
     for n in [i for v in dropped_groups.values() for i in v]:
         client.resume_node(n)
@@ -368,7 +348,7 @@ def test_one_node_dc_with_indexes(write_indexes_when_groups_dropped):
                "--one-node",
                "--groups", ','.join(map(str, client.groups)),
                "dc"]
-        print(cmd)
+        logger.info("{0}\n".format(cmd))
         subprocess.call(cmd)
 
         for k, v in bad_keys.items():
@@ -433,7 +413,7 @@ def test_dc_with_indexes(write_indexes_when_groups_dropped):
            "--remote", "{0}:{1}:2".format(nodes[n].host, nodes[n].port),
            "--groups", ','.join(map(str, client.groups)),
            "dc"]
-    print(cmd)
+    logger.info("{0}\n".format(cmd))
     subprocess.call(cmd)
 
     for k, v in bad_keys.items():
@@ -485,7 +465,7 @@ def test_nprocess_dc_with_indexes(write_indexes_when_groups_dropped):
            "--remote", "{0}:{1}:2".format(nodes[n].host, nodes[n].port),
            "--groups", ','.join(map(str, client.groups)),
            "dc"]
-    print(cmd)
+    logger.info("{0}\n".format(cmd))
     subprocess.call(cmd)
 
     for k, v in bad_keys.items():

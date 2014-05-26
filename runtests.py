@@ -11,6 +11,7 @@ import ConfigParser
 import pytest
 import subprocess
 import ConfigParser
+import logging
 
 import ansible_manager
 import instances_manager
@@ -60,22 +61,27 @@ def qa_storage_upload(file_path):
 
     return url
 
-def set_logging_level(level):
-    """Sets/unsets logging level for teamcity_messages and logging_tests modules
-    (level = true|false => logging_level = INFO|ERROR)
-    """
-    conf_file = 'lib/loggers.ini'
+def setup_loggers(level):
+    tc_logging_level = logging.INFO if level else logging.ERROR
+    
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(tc_logging_level)
+    formatter = logging.Formatter("%(message)s")
+    handler.setFormatter(formatter)
+
+    tc_logger = logging.getLogger('teamcity_logger')
+    tc_logger.setLevel(tc_logging_level)
+    tc_logger.addHandler(handler)
+
+    conf_file = 'lib/logger.ini'
     parser = ConfigParser.ConfigParser()
     parser.read([conf_file])
 
-    tc_logging_level = "INFO" if level else "ERROR"
     tests_logging_level = "ERROR" if level else "INFO"
-    parser.set('logger_teamcityLogger', 'level', tc_logging_level)
     parser.set('logger_testLogger', 'level', tests_logging_level)
 
     with open(conf_file, "w") as conf:
         parser.write(conf)
-
 #END of util functions
 
 class TestRunner(object):
@@ -274,7 +280,7 @@ class TestRunner(object):
                                                                                                  test["test_env_cfg"]["servers"]["count_per_group"]))
 
     def run(self, test_name):
-        files_to_sync = ["elliptics_testhelper.py", "utils.py", "logging_tests.py", "loggers.ini"]
+        files_to_sync = ["elliptics_testhelper.py", "utils.py", "logging_tests.py", "logger.ini"]
         rsyncdir_opts = "--rsyncdir tests/{0}/".format(self.tests[test_name]["dir"])
         for f in files_to_sync:
             rsyncdir_opts += " --rsyncdir lib/{0}".format(f)
@@ -325,7 +331,7 @@ if __name__ == "__main__":
     parser.add_argument('--teamcity', action="store_true", dest="teamcity")
     args = parser.parse_args()
 
-    set_logging_level(args.teamcity)
+    setup_loggers(args.teamcity)
 
     testrunner = TestRunner(args)
     testrunner.run_tests()

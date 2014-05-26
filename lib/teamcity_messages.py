@@ -1,9 +1,4 @@
-import os.path
 import logging
-import logging.config
-
-#TODO: remove this import (it was added to register custom handler from logging_tests)
-import logging_tests
 
 class block(object):
     """Prints teamcity service messages to combine output in a single block.
@@ -32,6 +27,7 @@ class block(object):
     """
     def __init__(self, name=None):
         self.name = name
+        self.logger = logging.getLogger('teamcity_logger')
 
     def open_block(self):
         self.logger.info("##teamcity[blockOpened name='{0}']".format(self.name))
@@ -39,31 +35,20 @@ class block(object):
     def close_block(self):
         self.logger.info("##teamcity[blockClosed name='{0}']".format(self.name))
 
-    def create_logger(self):
-        conf_file = os.path.dirname(__file__)
-        conf_file = os.path.join(conf_file, 'loggers.ini')
-        logging.config.fileConfig(conf_file)
-        self.logger = logging.getLogger('teamcityLogger')
-
     def __call__(self, f):
         if self.name is None:
             self.name = f.func_name
 
         def wrapper(*args, **kwargs):
-            # We create logger not in __init__ to be able to modify logger config
-            # and use the decorator in the same file
-            self.create_logger()
-
             self.open_block()
-            res = f(*args, **kwargs)
+            result = f(*args, **kwargs)
             self.close_block()
 
-            return res
+            return result
 
         return wrapper
 
     def __enter__(self):
-        self.create_logger()
         self.open_block()
 
     def __exit__(self, type, value, traceback):
