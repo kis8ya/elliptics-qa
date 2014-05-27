@@ -265,9 +265,9 @@ class TestRunner(object):
 
     def setup(self, test_name):
         test = self.tests[test_name]
-        # Prepare test environment for a specific test
-        if test["test_env_cfg"].get("prepare_env"):
-            ansible_manager.run_playbook(self.abspath(test["test_env_cfg"]["prepare_env"]),
+        # Do prerequisite steps for a specific test
+        for setup_playbook in test["test_env_cfg"]["setup_playbooks"]:
+            ansible_manager.run_playbook(self.abspath(setup_playbook),
                                          self.get_inventory_path(test_name))
 
         # Run elliptics process on all servers
@@ -298,6 +298,11 @@ class TestRunner(object):
         pytest.main(opts)
 
     def teardown(self, test_name):
+        # Do clean-up steps for a specific test
+        for teardown_playbook in self.tests[test_name]["test_env_cfg"]["teardown_playbooks"]:
+            ansible_manager.run_playbook(self.abspath(teardown_playbook),
+                                         self.get_inventory_path(test_name))
+
         ansible_manager.run_playbook(playbook=self.abspath("elliptics-stop"),
                                      inventory=self.get_inventory_path(test_name))
 
