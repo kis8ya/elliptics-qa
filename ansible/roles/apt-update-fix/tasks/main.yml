@@ -1,0 +1,13 @@
+---
+- name: Clean up apt/lists/
+  shell: rm -rf /var/lib/apt/lists/*
+
+- name: Erase downloaded apt archive files
+  shell: apt-get clean
+
+- name: Perform 'apt-get update'
+  apt: update_cache=yes
+  register: result
+  until: result|success
+  retries: 3
+  delay: 10
