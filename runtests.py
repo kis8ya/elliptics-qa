@@ -265,19 +265,15 @@ class TestRunner(object):
 
     def setup(self, test_name):
         test = self.tests[test_name]
-        # Do prerequisite steps for a specific test
-        for setup_playbook in test["test_env_cfg"]["setup_playbooks"]:
-            ansible_manager.run_playbook(self.abspath(setup_playbook),
-                                         self.get_inventory_path(test_name))
-
-        # Run elliptics process on all servers
-        ansible_manager.run_playbook(self.abspath("elliptics-start"),
+        # Do prerequisite steps for a test
+        ansible_manager.run_playbook(self.abspath(test["test_env_cfg"]["setup_playbook"]),
                                      self.get_inventory_path(test_name))
 
         self.generate_pytest_cfg(test_name)
 
-        print("Test environment configuration:\n\tclients: {0}\n\tservers per group: {1}".format(test["test_env_cfg"]["clients"]["count"],
-                                                                                                 test["test_env_cfg"]["servers"]["count_per_group"]))
+        cfg_info = "Test environment configuration:\n\tclients: {0}\n\tservers per group: {1}"
+        print(cfg_info.format(test["test_env_cfg"]["clients"]["count"],
+                              test["test_env_cfg"]["servers"]["count_per_group"]))
 
     def run(self, test_name):
         files_to_sync = ["elliptics_testhelper.py", "utils.py", "logging_tests.py", "logger.ini"]
@@ -298,13 +294,9 @@ class TestRunner(object):
         pytest.main(opts)
 
     def teardown(self, test_name):
-        # Do clean-up steps for a specific test
-        for teardown_playbook in self.tests[test_name]["test_env_cfg"]["teardown_playbooks"]:
-            ansible_manager.run_playbook(self.abspath(teardown_playbook),
-                                         self.get_inventory_path(test_name))
-
-        ansible_manager.run_playbook(playbook=self.abspath("elliptics-stop"),
-                                     inventory=self.get_inventory_path(test_name))
+        # Do clean-up steps for a test
+        ansible_manager.run_playbook(self.abspath(self.tests[test_name]["test_env_cfg"]["teardown_playbook"]),
+                                     self.get_inventory_path(test_name))
 
     def run_tests(self):
         for test_name, test_cfg in self.tests.items():
