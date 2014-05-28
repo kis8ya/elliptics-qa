@@ -1,0 +1,33 @@
+---
+- hosts:
+    - servers[0]
+    - servers[2]
+  vars:
+    version: 2.24.15.18
+    elliptics_config: templates/elliptics.conf.j2
+  tasks:
+    - name: Install elliptics 2.24
+      apt: >
+        name=elliptics={{ version }},elliptics-client={{ version }}
+        force=yes
+
+    - name: Create Elliptics config file
+      template: src=../{{ elliptics_config }} dest={{ config }}
+
+- hosts:
+    - servers[1]
+    - servers[3]
+  tasks:
+    - name: Create Elliptics config file
+      template: src=../{{ elliptics_config }} dest={{ config }}
+
+- hosts: servers
+  tasks:
+    - name: Start Elliptics daemon
+      command: dnet_ioserv -c {{ config }}
+
+    - name: Wait for Elliptics to start up
+      pause: seconds=10
+
+    - name: Ensure Elliptics is running
+      shell: ps ax | grep [d]net_ioserv
