@@ -71,5 +71,5 @@ def test_cache_lru(client, requests_number):
     time_after = time_requests(client, requests_number, hot_keys, cold_keys)
 
     diff_time = time_after - time_before
-    allowed_overhead_time = time_before * 0.1
+    allowed_overhead_time = time_before * 0.2
     assert_that(diff_time, less_than_or_equal_to(allowed_overhead_time))
