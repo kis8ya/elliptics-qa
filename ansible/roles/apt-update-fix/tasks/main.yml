@@ -10,4 +10,4 @@
   register: result
   until: result|success
   retries: 3
-  delay: 10
+  delay: 15
