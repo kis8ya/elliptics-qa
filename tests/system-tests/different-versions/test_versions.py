@@ -8,11 +8,16 @@ import elliptics_testhelper as et
 
 from logging_tests import logger
 
+def is_odd_node(node):
+    """Checks if node has odd number"""
+    node_number = int(node.host.partition('.')[0].rsplit("-", 1)[-1])
+    return node_number % 2
+
 @pytest.fixture(scope='module')
 def new_nodes(pytestconfig):
     """Returns list of nodes with new elliptics version (2.25)."""
     nodes = et.EllipticsTestHelper.get_nodes_from_args(pytestconfig.option.nodes)
-    nodes = [n for n in nodes if "server-1" not in n.host and "server-3" not in n.host]
+    nodes = [n for n in nodes if not is_odd_node(n)]
     return nodes
 
 @pytest.fixture(scope='module')
@@ -25,7 +30,7 @@ def new_client(new_nodes):
 def old_nodes(pytestconfig):
     """Returns list of nodes with old elliptics version (2.24)."""
     nodes = et.EllipticsTestHelper.get_nodes_from_args(pytestconfig.option.nodes)
-    nodes = [n for n in nodes if "server-1" in n.host or "server-3" in n.host]
+    nodes = [n for n in nodes if is_odd_node(n)]
     return nodes
 
 @pytest.fixture(scope='module')

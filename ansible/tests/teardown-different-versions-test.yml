@@ -1,0 +1,15 @@
+---
+- include: ../elliptics-stop.yml
+
+- hosts:
+    - clients
+    - servers
+  roles:
+    - role: ../roles/install-elliptics-from-debs
+      when: >
+        packages_dir is defined and
+        inventory_hostname_short.rsplit("-", 1)[-1]|int is odd()
+    - role: ../roles/install-elliptics-from-repo
+      when: >
+        packages_dir is not defined and
+        inventory_hostname_short.rsplit("-", 1)[-1]|int is odd()

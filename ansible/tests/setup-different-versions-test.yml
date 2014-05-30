@@ -1,0 +1,32 @@
+---
+- hosts:
+    - servers
+    - clients
+  tasks:
+    - name: Install elliptics (old version)
+      apt: >
+        name=elliptics={{ old_version }},elliptics-client={{ old_version }}
+        force=yes
+      when: inventory_hostname_short.rsplit("-", 1)[-1]|int is odd()
+
+- hosts: servers
+  vars:
+    old_elliptics_config: templates/elliptics.conf.j2
+  tasks:
+    - name: Create Elliptics config file
+      template: >
+        src=../{{ old_elliptics_config
+                  if inventory_hostname_short.rsplit("-", 1)[-1]|int is odd()
+                  else elliptics_config }}
+        dest={{ config }}
+
+- hosts: servers
+  tasks:
+    - name: Start Elliptics daemon
+      command: dnet_ioserv -c {{ config }}
+
+    - name: Wait for Elliptics to start up
+      pause: seconds=10
+
+    - name: Ensure Elliptics is running
+      shell: ps ax | grep [d]net_ioserv
