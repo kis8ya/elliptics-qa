@@ -10,7 +10,11 @@
         - wondershaper
 
     - name: Install Python packages
-      pip: name={{ item }} use_mirrors=no
+      pip: name={{ item }}
+      register: result
+      until: result|success
+      retries: 3
+      delay: 10
       with_items:
         - pytest
         - pytest-xdist
