@@ -1,5 +1,3 @@
-#TODO: remove force_expand_names parameter (it was added just for hotfix)
-
 import os
 import sys
 import yaml
@@ -44,7 +42,7 @@ def run_playbook(playbook, inventory=None):
             raise RuntimeError("Playbook {0} failed (exit code: {1})".format(playbook, p.returncode))
 
 def generate_inventory_file(inventory_path, clients_count, servers_per_group,
-                            groups, instances_names, force_expand_names=False):
+                            groups, instances_names):
     inventory_host_record_template = '{0}.i.fog.yandex.net ansible_ssh_user=root'
     servers_group_template = 'servers-{0}'
 
@@ -55,7 +53,7 @@ def generate_inventory_file(inventory_path, clients_count, servers_per_group,
 
     # Add elliptics clients
     inventory.add_section(groups["clients"])
-    for i in _get_host_names(instance_name=instances_names['client'], count=clients_count):
+    for i in get_host_names(instance_name=instances_names['client'], count=clients_count):
         host_record = inventory_host_record_template.format(i)
         inventory.set(groups["clients"], host_record)
     # Add alias for clients' group (to use it in playbooks)
@@ -64,7 +62,7 @@ def generate_inventory_file(inventory_path, clients_count, servers_per_group,
     inventory.set(clients_general_group, groups["clients"])
 
     # Add elliptics servers
-    servers_names = _get_host_names(instance_name=instances_names['server'], count=servers_count, force_expand_names=force_expand_names)
+    servers_names = get_host_names(instance_name=instances_names['server'], count=servers_count)
     server_name = (x for x in servers_names)
     for g in xrange(groups_count):
         # per servers_per_group[i] servers (at ansible group with servers-(i+1) name)
@@ -101,8 +99,8 @@ def generate_inventory_file(inventory_path, clients_count, servers_per_group,
 def _as_group_of_groups(group):
     return '{0}:children'.format(group)
 
-def _get_host_names(instance_name, count, force_expand_names=False):
-    if force_expand_names and count == 1:
+def get_host_names(instance_name, count):
+    if count == 1:
         result = ["{0}-1".format(instance_name)]
     else:
         config = {"name": instance_name, "max_count": count}

@@ -185,8 +185,7 @@ class TestRunner(object):
                                                     clients_count=cfg["test_env_cfg"]["clients"]["count"],
                                                     servers_per_group=cfg["test_env_cfg"]["servers"]["count_per_group"],
                                                     groups=groups,
-                                                    instances_names=self.instances_names,
-                                                    force_expand_names=True)
+                                                    instances_names=self.instances_names)
 
             params = cfg["params"]
             if name in self.testsuite_params:
@@ -205,8 +204,7 @@ class TestRunner(object):
                                                 clients_count=self.instances_params["clients"]["count"],
                                                 servers_per_group=[self.instances_params["servers"]["count"]],
                                                 groups=groups,
-                                                instances_names=self.instances_names,
-                                                force_expand_names=True)
+                                                instances_names=self.instances_names)
 
         vars_path = self._get_vars_path('clients')
         ansible_manager.update_vars(vars_path=vars_path,
@@ -242,13 +240,8 @@ class TestRunner(object):
 
         servers_per_group = self.tests[test_name]["test_env_cfg"]["servers"]["count_per_group"]
         groups_count = len(servers_per_group)
-        config = {"name": self.instances_names['server'],
-                  "max_count": sum(servers_per_group)}
-        #TODO: remove this temporary fix
-        if config['max_count'] == 1:
-            servers_names = ["{0}-1".format(config["name"])]
-        else:
-            servers_names = openstack.utils.get_instances_names_from_conf(config)
+        servers_names = ansible_manager.get_host_names(self.instances_names['server'],
+                                                       sum(servers_per_group))
         server_name = (x for x in servers_names)
         for g in xrange(groups_count):
             for i in xrange(servers_per_group[g]):
@@ -281,17 +274,20 @@ class TestRunner(object):
         for f in files_to_sync:
             rsyncdir_opts += " --rsyncdir lib/{0}".format(f)
 
-        if self.teamcity:
-            opts = '--teamcity'
-        else:
-            opts = ''
-        opts += ' -d --tx ssh="{0}.i.fog.yandex.net -l root -q" {1} tests/{2}/'
-        opts = opts.format(self.instances_names['client'],
-                           rsyncdir_opts,
-                           self.tests[test_name]["dir"])
-        if self.verbose_output:
-            print(opts)
-        pytest.main(opts)
+        for client_name in ansible_manager.get_host_names(self.instances_names["client"],
+                                                          self.tests[test_name]["test_env_cfg"]["clients"]["count"]):
+            if self.teamcity:
+                opts = '--teamcity'
+            else:
+                opts = ''
+            opts += ' -d --tx ssh="{0}.i.fog.yandex.net -l root -q" {1} tests/{2}/'
+
+            opts = opts.format(client_name,
+                               rsyncdir_opts,
+                               self.tests[test_name]["dir"])
+            if self.verbose_output:
+                print(opts)
+            pytest.main(opts)
 
     def teardown(self, test_name):
         # Do clean-up steps for a test
