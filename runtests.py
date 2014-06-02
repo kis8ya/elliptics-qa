@@ -61,23 +61,27 @@ def qa_storage_upload(file_path):
 
     return url
 
-def setup_loggers(level):
-    tc_logging_level = logging.INFO if level else logging.ERROR
-    
+def setup_loggers(teamcity, verbose):
     handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(tc_logging_level)
+    handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(message)s")
     handler.setFormatter(formatter)
 
+    tc_logging_level = logging.INFO if teamcity else logging.ERROR
     tc_logger = logging.getLogger('teamcity_logger')
     tc_logger.setLevel(tc_logging_level)
     tc_logger.addHandler(handler)
+
+    runner_logging_level = logging.INFO if verbose else logging.ERROR
+    runner_logger = logging.getLogger('runner_logger')
+    runner_logger.setLevel(runner_logging_level)
+    runner_logger.addHandler(handler)
 
     conf_file = 'lib/logger.ini'
     parser = ConfigParser.ConfigParser()
     parser.read([conf_file])
 
-    tests_logging_level = "ERROR" if level else "INFO"
+    tests_logging_level = "ERROR" if teamcity else "INFO"
     parser.set('logger_testLogger', 'level', tests_logging_level)
 
     with open(conf_file, "w") as conf:
@@ -93,7 +97,7 @@ class TestRunner(object):
         self.testsuite_params = json.loads(args.testsuite_params, object_hook=_decode_value)
         self.tags = args.tag
 
-        self.verbose_output = args.verbose
+        self.logger = logging.getLogger('runner_logger')
         self.teamcity = args.teamcity
 
         self.tests = None
@@ -253,8 +257,7 @@ class TestRunner(object):
         with open(os.path.join(self.tests_dir, "pytest.ini"), "w") as config_file:
             pytest_config.write(config_file)
 
-        if self.verbose_output:
-            print((open(os.path.join(self.tests_dir, "pytest.ini"))).read())
+        self.logger.info((open(os.path.join(self.tests_dir, "pytest.ini"))).read())
 
     def setup(self, test_name):
         test = self.tests[test_name]
@@ -265,8 +268,8 @@ class TestRunner(object):
         self.generate_pytest_cfg(test_name)
 
         cfg_info = "Test environment configuration:\n\tclients: {0}\n\tservers per group: {1}"
-        print(cfg_info.format(test["test_env_cfg"]["clients"]["count"],
-                              test["test_env_cfg"]["servers"]["count_per_group"]))
+        self.logger.info(cfg_info.format(test["test_env_cfg"]["clients"]["count"],
+                                         test["test_env_cfg"]["servers"]["count_per_group"]))
 
     def run(self, test_name):
         files_to_sync = ["elliptics_testhelper.py", "utils.py", "logging_tests.py", "logger.ini"]
@@ -285,8 +288,7 @@ class TestRunner(object):
             opts = opts.format(client_name,
                                rsyncdir_opts,
                                self.tests[test_name]["dir"])
-            if self.verbose_output:
-                print(opts)
+            self.logger.info(opts)
             pytest.main(opts)
 
     def teardown(self, test_name):
@@ -324,7 +326,7 @@ if __name__ == "__main__":
     parser.add_argument('--teamcity', action="store_true", dest="teamcity")
     args = parser.parse_args()
 
-    setup_loggers(args.teamcity)
+    setup_loggers(args.teamcity, args.verbose)
 
     testrunner = TestRunner(args)
     testrunner.run_tests()
