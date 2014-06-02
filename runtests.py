@@ -317,13 +317,19 @@ class TestRunner(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--branch', dest="git_branch", default="master")
-    parser.add_argument('--testsuite-params', dest="testsuite_params", default="{}")
-    parser.add_argument('--packages-dir', dest="packages_dir")
-    parser.add_argument('--tag', action="append", dest="tag")
+    parser.add_argument('--branch', dest="git_branch", default="master",
+                        help="target branch for pull requests.")
+    parser.add_argument('--testsuite-params', dest="testsuite_params", default="{}",
+                        help="parameters which will override default parameters for specified test suite.")
+    parser.add_argument('--packages-dir', dest="packages_dir",
+                        help="path to directory with packages to install.")
+    parser.add_argument('--tag', action="append", dest="tag",
+                        help="specifying which tests to run.")
 
-    parser.add_argument('--verbose', '-v', action="store_true", dest="verbose")
-    parser.add_argument('--teamcity', action="store_true", dest="teamcity")
+    parser.add_argument('--verbose', '-v', action="store_true", dest="verbose",
+                        help="increase verbosity")
+    parser.add_argument('--teamcity', action="store_true", dest="teamcity",
+                        help="will format output with Teamcity messages.")
     args = parser.parse_args()
 
     setup_loggers(args.teamcity, args.verbose)
