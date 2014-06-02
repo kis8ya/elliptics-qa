@@ -45,6 +45,8 @@ def get_instances_cfg(instances_params, base_names):
                             instances_params["servers"]["image"])
     if servers_conf["max_count"] == 1:
         servers_conf["name"] += "-1"
+    if clients_conf["max_count"] == 1:
+        clients_conf["name"] += "-1"
 
     return {"servers": [clients_conf, servers_conf]}
 
