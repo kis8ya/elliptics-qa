@@ -299,6 +299,19 @@ def test_find_any_indexes_after_update(test_class_name, index_list, client, ids)
     check_find_any_indexes(index_list, client, ids)
 #END of update_indexes tests
 
+# remove indexes tests
+def test_list_indexes_after_remove(client, removed_ids, ids):
+    check_list_indexes(client, removed_ids)
+
+@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
+def test_find_all_indexes_after_remove(test_class_name, index_list, client, ids):
+    check_find_all_indexes(index_list, client, ids)
+
+@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
+def test_find_any_indexes_after_remove(test_class_name, index_list, client, ids):
+    check_find_any_indexes(index_list, client, ids)
+#END of remove indexes tests
+
 # update_indexes_internal tests
 def test_list_indexes_after_internal_update(client, internal_updated_ids, ids):
     check_list_indexes(client, internal_updated_ids)
@@ -311,18 +324,3 @@ def test_find_all_indexes_after_internal_update(test_class_name, index_list, cli
 def test_find_any_indexes_after_internal_update(test_class_name, index_list, client, ids):
     check_find_any_indexes(index_list, client, ids)
 #END of update_indexes_internal tests
-
-# remove indexes tests
-def test_list_indexes_after_remove(client, removed_ids, ids):
-    check_list_indexes(client, removed_ids)
-
-@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
-def test_find_all_indexes_after_remove(test_class_name, index_list, client, ids):
-    pytest.skip("unknown behavior")
-    check_find_all_indexes(index_list, client, ids)
-
-@pytest.mark.parametrize(('test_class_name', 'index_list'), sample_classes(indexes, indexes_combinations_classes).items())
-def test_find_any_indexes_after_remove(test_class_name, index_list, client, ids):
-    pytest.skip("unknown behavior")
-    check_find_any_indexes(index_list, client, ids)
-#END of remove indexes tests
