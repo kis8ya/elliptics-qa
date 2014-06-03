@@ -96,6 +96,7 @@ class TestRunner(object):
         self.packages_dir = args.packages_dir
         self.testsuite_params = json.loads(args.testsuite_params, object_hook=_decode_value)
         self.tags = args.tag
+        self.custom_instance_name = args.custom_instance_name
 
         self.logger = logging.getLogger('runner_logger')
         self.teamcity = args.teamcity
@@ -227,8 +228,12 @@ class TestRunner(object):
         """
         self.collect_tests()
 
-        self.instances_names = {'client': "elliptics-{0}-client".format(self.branch),
-                                'server': "elliptics-{0}-server".format(self.branch)}
+        if self.custom_instance_name:
+            self.instances_names = {'client': "{0}-client".format(self.custom_instance_name),
+                                    'server': "{0}-server".format(self.custom_instance_name)}
+        else:
+            self.instances_names = {'client': "elliptics-{0}-client".format(self.branch),
+                                    'server': "elliptics-{0}-server".format(self.branch)}
         self.collect_instances_params()
         instances_cfg = instances_manager.get_instances_cfg(self.instances_params,
                                                             self.instances_names)
@@ -325,6 +330,8 @@ if __name__ == "__main__":
                         help="path to directory with packages to install.")
     parser.add_argument('--tag', action="append", dest="tag",
                         help="specifying which tests to run.")
+    parser.add_argument('--custom-instance-name', dest="custom_instance_name",
+                        help="specifying custom base name for the instances.")
 
     parser.add_argument('--verbose', '-v', action="store_true", dest="verbose",
                         help="increase verbosity")
