@@ -1,4 +1,5 @@
 import openstack
+import copy
 
 session = openstack.Session()
 
@@ -6,22 +7,39 @@ flavors = {None: 0}
 for f in session.get_flavors_list():
     flavors[f['name']] = f['ram']
 
+def _get_flavor_name(flavor_id):
+    flavor_list = session.get_flavors_list()
+    for flavor in flavor_list:
+        if flavor['id'] == flavor_id:
+            return flavor['name']
+    else:
+        return None
+
+def _satisfied(instance_name, flavor_name):
+    instance_info = session.get_instance_info(instance_name)
+    if instance_info is None:
+        return False
+    else:
+        current_flavor_name = _get_flavor_name(instance_info['flavor']['id'])
+        return flavors[current_flavor_name] >= flavors[flavor_name]
+
 def create(instances_cfg):
     instances = []
     for instance_cfg in instances_cfg['servers']:
-        instances += openstack.utils.get_instances_names_from_conf(instance_cfg)
+        instances_names = openstack.utils.get_instances_names_from_conf(instance_cfg)
+        instances += instances_names
+        for instance_name in instances_names:
+            if _satisfied(instance_name, instance_cfg["flavor_name"]):
+                session.rebuild_instance(instance_name)
+            else:
+                icfg = copy.deepcopy(instance_cfg)
+                icfg["name"] = instance_name
+                icfg["max_count"] = icfg["min_count"] = 1
 
-    for i in instances:
-        if session.get_instance_info(i) is None:
-            session.delete_instances(instances_cfg)
-            session.create_instances(instances_cfg)
-            break
-    else:
-        try:
-            session.rebuild_instances(instances_cfg)
-        except openstack.utils.ApiRequestError:
-            session.delete_instances(instances_cfg)
-            session.create_instances(instances_cfg)
+                session.delete_instance(instance_name)
+                session.create_instance(icfg)
+
+    openstack.utils.check_availability(session, instances)
 
 def delete(instances_cfg):
     session.delete_instances(instances_cfg)
