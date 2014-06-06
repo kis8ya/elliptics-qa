@@ -59,7 +59,7 @@ apt_preserve_sources_list: true
         if r.status_code != 204:
             raise utils.ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
 
-    def create_instances(self, config):
+    def create_instances(self, config, check=True):
         # Waiting for DNS records update
         instances = []
         for instance_cfg in config['servers']:
@@ -69,10 +69,9 @@ apt_preserve_sources_list: true
             try:
                 while socket.gethostbyname(i):
                     print '.',
-                    time.sleep(10)
+                    time.sleep(3)
             except socket.gaierror:
-                print('\nA record for {0} was deleted'.format(i))
-        time.sleep(30)
+                print('\nA-record for {0} was deleted'.format(i))
 
         for instance_cfg in config['servers']:
             self.create_instance(data=instance_cfg)
@@ -81,8 +80,9 @@ apt_preserve_sources_list: true
         for instance_cfg in config['servers']:
             instances += utils.get_instances_names_from_conf(instance_cfg)
 
-        if not utils.check_availability(session=self, instances=instances):
-            raise RuntimeError("Not all nodes available")
+        if check:
+            if not utils.check_availability(session=self, instances=instances):
+                raise RuntimeError("Not all nodes available")
 
     def delete_instances(self, config): 
         for instance_cfg in config['servers']:
