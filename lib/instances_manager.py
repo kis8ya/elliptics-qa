@@ -35,11 +35,12 @@ def create(instances_cfg):
                 icfg = copy.deepcopy(instance_cfg)
                 icfg["name"] = instance_name
                 icfg["max_count"] = icfg["min_count"] = 1
+                icfg = {"servers": [icfg]}
 
                 session.delete_instance(instance_name)
-                session.create_instance(icfg)
+                session.create_instances(icfg, check=False)
 
-    openstack.utils.check_availability(session, instances)
+    return openstack.utils.check_availability(session, instances)
 
 def delete(instances_cfg):
     session.delete_instances(instances_cfg)
