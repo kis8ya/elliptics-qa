@@ -29,7 +29,8 @@ def create(instances_cfg):
         instances_names = openstack.utils.get_instances_names_from_conf(instance_cfg)
         instances += instances_names
         for instance_name in instances_names:
-            if _satisfied(instance_name, instance_cfg["flavor_name"]):
+            #TODO: temporary fix for rebuil bug
+            if False and _satisfied(instance_name, instance_cfg["flavor_name"]):
                 session.rebuild_instance(instance_name)
             else:
                 icfg = copy.deepcopy(instance_cfg)
