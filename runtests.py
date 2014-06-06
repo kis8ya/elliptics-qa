@@ -238,8 +238,10 @@ class TestRunner(object):
         instances_cfg = instances_manager.get_instances_cfg(self.instances_params,
                                                             self.instances_names)
 
+        if not instances_manager.create(instances_cfg):
+            raise RuntimeError("Not all nodes available")
+
         self.prepare_ansible_test_files()
-        instances_manager.create(instances_cfg)
         self.install_elliptics_packages()
 
     def generate_pytest_cfg(self, test_name):
@@ -276,14 +278,19 @@ class TestRunner(object):
         self.logger.info(cfg_info.format(test["test_env_cfg"]["clients"]["count"],
                                          test["test_env_cfg"]["servers"]["count_per_group"]))
 
-    def run(self, test_name):
+    def run_playbook_test(self, test_name):
+        ansible_manager.run_playbook(self.abspath(self.tests[test_name]["playbook"]),
+                                     self.get_inventory_path(test_name))
+
+    def run_pytest_test(self, test_name):
         files_to_sync = ["elliptics_testhelper.py", "utils.py", "logging_tests.py", "logger.ini"]
         rsyncdir_opts = "--rsyncdir tests/{0}/".format(self.tests[test_name]["dir"])
         for f in files_to_sync:
             rsyncdir_opts += " --rsyncdir lib/{0}".format(f)
 
-        for client_name in ansible_manager.get_host_names(self.instances_names["client"],
-                                                          self.tests[test_name]["test_env_cfg"]["clients"]["count"]):
+        clients_names = ansible_manager.get_host_names(self.instances_names["client"],
+                                                       self.tests[test_name]["test_env_cfg"]["clients"]["count"])
+        for client_name in clients_names:
             if self.teamcity:
                 opts = '--teamcity'
             else:
@@ -295,6 +302,14 @@ class TestRunner(object):
                                self.tests[test_name]["dir"])
             self.logger.info(opts)
             pytest.main(opts)
+
+    def run(self, test_name):
+        if self.tests[test_name].get("playbook"):
+            self.run_playbook_test(test_name)
+        elif self.tests[test_name].get("dir"):
+            self.run_pytest_test(test_name)
+        else:
+            self.logger.info("Can't specify running method for {0} test.\n".format(test_name))
 
     def teardown(self, test_name):
         # Do clean-up steps for a test
