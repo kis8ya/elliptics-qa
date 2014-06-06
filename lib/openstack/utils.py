@@ -17,14 +17,16 @@ os_tenant_name = os.environ.get('OS_TENANT_NAME', None)
 
 TIMEOUT = 60
 
-ENDPOINTS_INFO = {"COMPUTE": {'port': 8774,
+ENDPOINTS_INFO = {"COMPUTE": {'port': 443,
+                              'host': "https://compute-sas1.fog.yandex-team.ru",
                               'uri': {"IMAGES": 'v2/{tenant_id}/images',
                                       "FLAVORS": 'v2/{tenant_id}/flavors/detail',
                                       "NETWORKS": 'v2/{tenant_id}/os-networks',
                                       "SERVERS": 'v2/{tenant_id}/servers',
                                       "SERVERS_SERVER": 'v2/{tenant_id}/servers/{instance_id}',
                                       "ACTION": 'v2/{tenant_id}/servers/{server_id}/action'}},
-                  "IDENTITY": {'port': 5000,
+                  "IDENTITY": {'port': 443,
+                               'host': "https://auth.fog.yandex-team.ru",
                                'uri': {"TOKENS": 'v2.0/tokens'}}}
 
 class ApiRequestError(Exception):
@@ -139,7 +141,7 @@ def get_url(service_type, endpoint_type="COMPUTE", **kwargs):
     """ Returns Service Endpoint URL
     """
     url = '{host}:{port}/{uri}'.format(
-        host=os_url,
+        host=ENDPOINTS_INFO[endpoint_type]['host'],
         port=ENDPOINTS_INFO[endpoint_type]['port'],
         uri=ENDPOINTS_INFO[endpoint_type]['uri'][service_type])
     url = url.format(**kwargs)
