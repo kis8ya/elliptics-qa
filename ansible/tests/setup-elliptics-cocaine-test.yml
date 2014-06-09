@@ -1,0 +1,4 @@
+---
+- include: ../install-cocaine.yml
+
+- include: ../elliptics-start.yml

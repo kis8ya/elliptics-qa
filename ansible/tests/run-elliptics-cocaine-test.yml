@@ -1,0 +1,8 @@
+---
+- hosts: clients
+  vars:
+    test_apps:
+      - queue
+      - testerhead-cpp
+  roles:
+    - ../roles/elliptics-test-app
