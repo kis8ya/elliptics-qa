@@ -148,7 +148,7 @@ class TestRunner(object):
         """Returns information about clients and servers
         """
         if self.branch == "stable":
-            image = "elliptics-lts"
+            image = "elliptics"
         else:
             image = "elliptics"
 
@@ -272,7 +272,9 @@ class TestRunner(object):
         ansible_manager.run_playbook(self.abspath(test["test_env_cfg"]["setup_playbook"]),
                                      self.get_inventory_path(test_name))
 
-        self.generate_pytest_cfg(test_name)
+        # Check if it's a pytest test
+        if test.get("dir"):
+            self.generate_pytest_cfg(test_name)
 
         cfg_info = "Test environment configuration:\n\tclients: {0}\n\tservers per group: {1}"
         self.logger.info(cfg_info.format(test["test_env_cfg"]["clients"]["count"],
