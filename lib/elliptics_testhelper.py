@@ -88,7 +88,7 @@ class EllipticsTestHelper(elliptics.Session):
                   "OUTPUT --proto tcp --destination-port {port} --jump DROP",
                   "OUTPUT --proto tcp --source-port {port} --jump DROP"]
 
-    def __init__(self, nodes, wait_timeout, check_timeout,
+    def __init__(self, nodes, wait_timeout=5, check_timeout=30,
                  groups=None, config=elliptics.Config(), logging_level=4):
         if logging_level:
             dir_path = os.path.dirname(self._log_path)
