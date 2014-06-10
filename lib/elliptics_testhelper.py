@@ -42,6 +42,18 @@ OffsetDataGetter = {'BEGINNING':     lambda l, os: random.randint(1, l - os - 1)
                     'APPENDING':     lambda l, os: random.randint(l - os + 1, utils.MAX_LENGTH + 1),
                     'OVER_BOUNDARY': lambda l, os: random.randint(1, utils.MAX_LENGTH)}
 
+@pytest.fixture(scope='module')
+def nodes(pytestconfig):
+    nodes = EllipticsTestHelper.get_nodes_from_args(pytestconfig.option.nodes)
+    return nodes
+
+@pytest.fixture(scope='module')
+def client(pytestconfig):
+    """Prepares default elliptics session."""
+    nodes = EllipticsTestHelper.get_nodes_from_args(pytestconfig.option.nodes)
+    client = EllipticsTestHelper(nodes=nodes)
+    return client
+
 @pytest.fixture(scope='function')
 def key_and_data():
     """ Returns key and data (random sequence of bytes)

@@ -7,6 +7,7 @@ from collections import defaultdict
 
 import elliptics_testhelper as et
 
+from elliptics_testhelper import nodes
 from hamcrest import assert_that, not_none, equal_to, has_length, greater_than
 
 # utility functions
@@ -33,10 +34,10 @@ indexes_count = 5
 indexes = map(str, random.sample(xrange(100000000), indexes_count))
 
 @pytest.fixture(scope='module')
-def client(pytestconfig):
-    nodes = et.EllipticsTestHelper.get_nodes_from_args(pytestconfig.option.nodes)
-    test_helper = et.EllipticsTestHelper(nodes=nodes, wait_timeout=45, check_timeout=60)
-    return test_helper
+def client(pytestconfig, nodes):
+    """Prepares elliptics session with long timeouts"""
+    client = et.EllipticsTestHelper(nodes=nodes, wait_timeout=45, check_timeout=60)
+    return client
 
 def key_index_data(key_id, index_id):
     """key-index data = <key_id>_<index_id>"""

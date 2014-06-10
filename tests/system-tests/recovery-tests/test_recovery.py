@@ -14,13 +14,23 @@ import elliptics
 
 import elliptics_testhelper as et
 
+from elliptics_testhelper import nodes
 from utils import MB, get_key_and_data
 from logging_tests import logger
 
-nodes = et.EllipticsTestHelper.get_nodes_from_args(pytest.config.getoption("node"))
-client = et.EllipticsTestHelper(nodes=nodes, wait_timeout=25, check_timeout=30)
-files_size = pytest.config.getoption("files_size")
-files_number = pytest.config.getoption("files_number")
+@pytest.fixture(scope='module')
+def client(pytestconfig, nodes):
+    """Prepares elliptics session with long timeouts"""
+    client = et.EllipticsTestHelper(nodes=nodes, wait_timeout=25, check_timeout=30)
+    return client
+
+@pytest.fixture(scope='module')
+def files_size(pytestconfig):
+    return pytestconfig.option.files_size
+
+@pytest.fixture(scope='module')
+def files_number(pytestconfig):
+    return pytestconfig.option.files_number
 
 timeout = pytest.config.getoption("test_timeout")
 
@@ -46,14 +56,14 @@ class HasItems(BaseMatcher):
 def hasitems(*elements):
     return HasItems(*elements)
 
-def key_and_data():
+def key_and_data(files_size):
     if files_size:
         return get_key_and_data(files_size, randomize_len=False)
     else:
         return get_key_and_data()
 
 class RingPartitioning(object):
-    def __init__(self, client):
+    def __init__(self, client, nodes):
         self.address_ranges = {}
         for node in client.routes.addresses():
             for n in nodes:
@@ -74,7 +84,7 @@ class RingPartitioning(object):
             my |= r[0] <= elliptics_id < r[1]
         return my
 
-def drop_nodes(number):
+def drop_nodes(client, nodes, number):
     nodes_to_drop = random.sample(nodes, number)
 
     for n in nodes_to_drop:
@@ -82,7 +92,7 @@ def drop_nodes(number):
 
     return nodes_to_drop
 
-def drop_groups(group_list):
+def drop_groups(client, nodes, group_list):
     groups_to_drop = {}
     for g in group_list:
         groups_to_drop[g] = [n for n in nodes if n.group == g]
@@ -92,7 +102,7 @@ def drop_groups(group_list):
 
     return groups_to_drop
 
-def wait_routes_list_update():
+def wait_routes_list_update(client):
     wait_time = 30
     wait_count = 6
     print("Waiting for {0} seconds to update client's routes list".format(wait_count * wait_time))
@@ -100,23 +110,23 @@ def wait_routes_list_update():
         time.sleep(wait_time)
         print("After {0} seconds client's routes list looks like:\n{1}".format(wait_time * (i + 1), client.routes.addresses()))
 
-def write_data_when_dropped(nodes_number):
+def write_data_when_dropped(client, nodes, files_number, files_size, nodes_number):
     """Drops nodes, writes data then resume nodes
     """
-    full_ring_partitioning = RingPartitioning(client)
+    full_ring_partitioning = RingPartitioning(client, nodes)
 
-    dropped_nodes = drop_nodes(nodes_number)
+    dropped_nodes = drop_nodes(client, nodes, nodes_number)
 
-    wait_routes_list_update()
+    wait_routes_list_update(client)
 
-    new_ring_partitioning = RingPartitioning(client)
+    new_ring_partitioning = RingPartitioning(client, nodes)
 
     good_keys = defaultdict(list)
     bad_keys = defaultdict(list)
     data_size = 0
     logger.info("Started writing {0} files\n".format(files_number))
     for i in xrange(files_number):
-        key, data = key_and_data()
+        key, data = key_and_data(files_size)
         elliptics_id =  client.transform(key)
 
         client.write_data_sync(key, data)
@@ -140,33 +150,33 @@ def write_data_when_dropped(nodes_number):
     for n in dropped_nodes:
         client.resume_node(n)
 
-    wait_routes_list_update()
+    wait_routes_list_update(client)
 
     return good_keys, bad_keys, dropped_nodes
 
-def find_node(hostname):
+def find_node(nodes, hostname):
     return [n for n in nodes if n.host == hostname][0]
 
 @pytest.fixture(scope='function')
-def write_data_when_two_dropped(request):
+def write_data_when_two_dropped(request, client, nodes, files_number, files_size):
     def fin():
         client.resume_all_nodes()
         time.sleep(60)
         
     request.addfinalizer(fin)
 
-    return write_data_when_dropped(2)
+    return write_data_when_dropped(client, nodes, files_number, files_size, 2)
 
 @pytest.mark.merge
 @pytest.mark.timeout(timeout)
-def test_one_node_option(write_data_when_two_dropped):
+def test_one_node_option(client, nodes, write_data_when_two_dropped):
     """Tests that 'dnet_recovery --remote ... --one-node merge'
     will recover proper keys from every node
     (even this node was dropped and has no keys to recover)
     when there were 2 dropped nodes
     """
     good_keys, bad_keys, dropped_nodes = write_data_when_two_dropped
-    ring_partitioning = RingPartitioning(client)
+    ring_partitioning = RingPartitioning(client, nodes)
 
     # check that "good" keys are accessible
     for key_list in good_keys.values():
@@ -219,7 +229,7 @@ def test_one_node_option(write_data_when_two_dropped):
 
 @pytest.mark.merge
 @pytest.mark.timeout(timeout)
-def test_merge_add_two_nodes(write_data_when_two_dropped):
+def test_merge_add_two_nodes(client, nodes, write_data_when_two_dropped):
     """Tests that 'dnet_recovery --remote ... merge'
     will recover all keys when there were 2 dropped nodes
     """
@@ -253,7 +263,7 @@ def test_merge_add_two_nodes(write_data_when_two_dropped):
         assert_that(k, equal_to(et.utils.get_sha1(data)))
 
 @pytest.fixture(scope='function')
-def write_indexes_when_groups_dropped(request):
+def write_indexes_when_groups_dropped(request, client, nodes, files_number, files_size):
     """Drops half groups, writes data then resume all nodes from these groups
     """
     # Generate 5 random indexes
@@ -263,7 +273,7 @@ def write_indexes_when_groups_dropped(request):
     key_count = 127
     logger.info("Started writing {0} files\n".format(key_count))
     for i in xrange(key_count):
-        key, data = key_and_data()
+        key, data = key_and_data(files_size)
         indexes_count = random.randint(1, len(indexes) - 1)
         key_indexes = random.sample(indexes, indexes_count)
         index_data = ["idata_{0}".format(k) for k in key_indexes]
@@ -279,15 +289,15 @@ def write_indexes_when_groups_dropped(request):
     groups_count = len(client.groups)
     groups_count_to_drop = int(math.ceil(groups_count / 2.0))
     groups_to_drop = random.sample(client.groups, groups_count_to_drop)
-    dropped_groups = drop_groups(groups_to_drop)
+    dropped_groups = drop_groups(client, nodes, groups_to_drop)
 
-    wait_routes_list_update()
+    wait_routes_list_update(client)
 
     # Write "bad" keys
     bad_keys = defaultdict(list)
     logger.info("Started writing {0} files\n".format(files_number))
     for i in xrange(files_number):
-        key, data = key_and_data()
+        key, data = key_and_data(files_size)
         indexes_count = random.randint(1, len(indexes) - 1)
         key_indexes = random.sample(indexes, indexes_count)
         index_data = ["idata_{0}".format(k) for k in key_indexes]
@@ -302,7 +312,7 @@ def write_indexes_when_groups_dropped(request):
     for n in [i for v in dropped_groups.values() for i in v]:
         client.resume_node(n)
 
-    wait_routes_list_update()
+    wait_routes_list_update(client)
 
     def fin():
         client.resume_all_nodes()
@@ -314,14 +324,14 @@ def write_indexes_when_groups_dropped(request):
 
 @pytest.mark.dc
 @pytest.mark.timeout(timeout)
-def test_one_node_dc_with_indexes(write_indexes_when_groups_dropped):
+def test_one_node_dc_with_indexes(client, nodes, write_indexes_when_groups_dropped):
     """Tests that 'dnet_recovery --remote ... --one-node dc'
     will recover all keys for every dropped group
     when there were half groups dropped
     """
     good_keys, bad_keys, dropped_groups, indexes = write_indexes_when_groups_dropped
     bad_groups = [int(g) for g in dropped_groups.keys()]
-    ring_partitioning = RingPartitioning(client)
+    ring_partitioning = RingPartitioning(client, nodes)
 
     # check that "good" keys are accessible in all groups
     for g in client.groups:
@@ -383,14 +393,14 @@ def test_one_node_dc_with_indexes(write_indexes_when_groups_dropped):
 
 @pytest.mark.dc
 @pytest.mark.timeout(timeout)
-def test_dc_with_indexes(write_indexes_when_groups_dropped):
+def test_dc_with_indexes(client, nodes, write_indexes_when_groups_dropped):
     """Tests that 'dnet_recovery --remote ... dc'
     will recover all keys for every dropped group
     when there were half groups dropped
     """
     good_keys, bad_keys, dropped_groups, indexes = write_indexes_when_groups_dropped
     bad_groups = [int(g) for g in dropped_groups.keys()]
-    ring_partitioning = RingPartitioning(client)
+    ring_partitioning = RingPartitioning(client, nodes)
 
     # check that "good" keys are accessible in all groups
     for g in client.groups:
@@ -434,14 +444,14 @@ def test_dc_with_indexes(write_indexes_when_groups_dropped):
 
 @pytest.mark.dc
 @pytest.mark.timeout(timeout)
-def test_nprocess_dc_with_indexes(write_indexes_when_groups_dropped):
+def test_nprocess_dc_with_indexes(client, nodes, write_indexes_when_groups_dropped):
     """Tests that 'dnet_recovery --nprocess=3 --remote ... dc'
     will recover all keys for every dropped group
     when there were half groups dropped
     """
     good_keys, bad_keys, dropped_groups, indexes = write_indexes_when_groups_dropped
     bad_groups = [int(g) for g in dropped_groups.keys()]
-    ring_partitioning = RingPartitioning(client)
+    ring_partitioning = RingPartitioning(client, nodes)
 
     # check that "good" keys are accessible in all groups
     for g in client.groups:
