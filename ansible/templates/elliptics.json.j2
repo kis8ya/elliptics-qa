@@ -21,6 +21,9 @@
     "net_thread_num": 4,
     "daemon": true,
     "auth_cookie": "ellicoca",
+    {% if cocaine_config is defined %}
+      "srw_config": "{{ cocaine_config }}",
+    {% endif %}
     "cache": {
       "size": {{ cache_size }},
       "shards": {{ cache_numbers }},
@@ -35,9 +38,6 @@
       "history": "{{ hist_dir }}",
       "data": "{{ data_dir }}/data",
       "sync": -1,
-      {% if cocaine_config is defined %}
-        "srw_config": "{{ cocaine_config }}",
-      {% endif %}
       "blob_size": "{{ blob_size }}"
     }
   ]
