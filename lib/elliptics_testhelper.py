@@ -100,8 +100,8 @@ class EllipticsTestHelper(elliptics.Session):
                   "OUTPUT --proto tcp --destination-port {port} --jump DROP",
                   "OUTPUT --proto tcp --source-port {port} --jump DROP"]
 
-    def __init__(self, nodes, wait_timeout=5, check_timeout=30,
-                 groups=None, config=elliptics.Config(), logging_level=4):
+    def __init__(self, nodes, wait_timeout=None, check_timeout=None,
+                 groups=None, config=None, logging_level=4):
         if logging_level:
             dir_path = os.path.dirname(self._log_path)
             if not os.path.exists(dir_path):
@@ -109,8 +109,16 @@ class EllipticsTestHelper(elliptics.Session):
             elog = elliptics.Logger(self._log_path, logging_level)
         else:
             elog = elliptics.Logger("/dev/stderr", logging_level)
+
+        if config is None:
+            config = elliptics.Config()
+
+        if wait_timeout is not None:
+            config.wait_timeout = wait_timeout
+        if check_timeout is not None:
+            config.check_timeout = check_timeout
+
         client_node = elliptics.Node(elog, config)
-        client_node.set_timeouts(wait_timeout, check_timeout)
         for node in nodes:
             client_node.add_remote(node.host, node.port)
 
