@@ -48,9 +48,8 @@ def nodes(pytestconfig):
     return nodes
 
 @pytest.fixture(scope='module')
-def client(pytestconfig):
+def client(pytestconfig, nodes):
     """Prepares default elliptics session."""
-    nodes = EllipticsTestHelper.get_nodes_from_args(pytestconfig.option.nodes)
     client = EllipticsTestHelper(nodes=nodes)
     return client
 

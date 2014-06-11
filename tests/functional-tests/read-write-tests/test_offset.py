@@ -6,7 +6,7 @@ import elliptics
 from hamcrest import assert_that, equal_to, has_property, has_length, is_
 
 import elliptics_testhelper as et
-from elliptics_testhelper import key_and_data, timestamp, user_flags, client
+from elliptics_testhelper import key_and_data, timestamp, user_flags, client, nodes
 
 import utils
 from utils import elliptics_result_with
