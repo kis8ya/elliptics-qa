@@ -7,15 +7,14 @@ import argparse
 import math
 
 from collections import defaultdict
-from hamcrest import assert_that, raises, calling, equal_to, has_length
-from hamcrest.core.base_matcher import BaseMatcher
+from hamcrest import assert_that, raises, calling, equal_to
 
 import elliptics
 
 import elliptics_testhelper as et
 
 from elliptics_testhelper import nodes
-from utils import MB, get_key_and_data
+from utils import MB, get_key_and_data, hasitems
 from logging_tests import logger
 
 @pytest.fixture(scope='module')
@@ -33,28 +32,6 @@ def files_number(pytestconfig):
     return pytestconfig.option.files_number
 
 timeout = pytest.config.getoption("test_timeout")
-
-class HasItems(BaseMatcher):
-    def __init__(self, *elements):
-        self.elements = elements
-
-    def matches(self, item, mismatch_description=None):
-        self.diff = set(self.elements).difference(set(item))
-        return len(self.diff) == 0
-
-    def describe_to(self, description):
-        description.append_text("a sequence has the {0} elements".format(len(self.elements)))
-
-    def describe_mismatch(self, item, mismatch_description):
-        if len(self.diff) >= 3:
-            sample = random.sample(self.diff, 3)
-        else:
-            sample = self.diff
-        sample = map(str, sample)
-        mismatch_description.append_text("got {0} elements difference ([{1}...])".format(len(self.diff), ', '.join(sample)))
-
-def hasitems(*elements):
-    return HasItems(*elements)
 
 def key_and_data(files_size):
     if files_size:

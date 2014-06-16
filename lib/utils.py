@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#
+
 import hashlib
 import random
 
@@ -42,6 +42,7 @@ def get_key_and_data_list(list_size=3):
 
     return key, data_list
 
+#START: Custom matchers for testing needs.
 class WithSameSha1As(BaseMatcher):
     def __init__(self, data):
         self.expected_sha1 = get_sha1(data)
@@ -58,6 +59,7 @@ class WithSameSha1As(BaseMatcher):
         mismatch_description.append_text(get_sha1(str(item)))
 
 def with_same_sha1_as(data):
+    """Matches if item has the same sha1 hash."""
     return WithSameSha1As(data)
 
 def elliptics_result_with(error_code, timestamp, user_flags, data):
@@ -70,3 +72,27 @@ def elliptics_result_with(error_code, timestamp, user_flags, data):
                           'timestamp', greater_than_or_equal_to(timestamp),
                           'user_flags', equal_to(user_flags),
                           'data', with_same_sha1_as(data))
+
+class HasItems(BaseMatcher):
+    def __init__(self, *elements):
+        self.elements = elements
+
+    def matches(self, item, mismatch_description=None):
+        self.diff = set(self.elements).difference(set(item))
+        return len(self.diff) == 0
+
+    def describe_to(self, description):
+        description.append_text("a sequence has the {0} elements".format(len(self.elements)))
+
+    def describe_mismatch(self, item, mismatch_description):
+        if len(self.diff) >= 3:
+            sample = random.sample(self.diff, 3)
+        else:
+            sample = self.diff
+        sample = map(str, sample)
+        mismatch_description.append_text("got {0} elements difference ([{1}...])".format(len(self.diff), ', '.join(sample)))
+
+def hasitems(*elements):
+    """Custom has_items matcher with a short description."""
+    return HasItems(*elements)
+#END: Custom matchers for testing needs.
