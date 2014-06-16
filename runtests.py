@@ -75,7 +75,6 @@ class TestRunner(object):
         self.instances_names = None
         self.instances_params = None
 
-        self.branch = args.branch
         self.prepare_base_environment()
 
 
@@ -98,11 +97,8 @@ class TestRunner(object):
     def collect_instances_params(self):
         """Returns information about clients and servers
         """
-        if self.branch == "stable":
-            image = "elliptics"
-        else:
-            image = "elliptics"
 
+        image = "elliptics"
         self.instances_params = {"clients": {"count": 0, "flavor": None, "image": image},
                                  "servers": {"count": 0, "flavor": None, "image": image}}
 
@@ -121,11 +117,11 @@ class TestRunner(object):
         """Prepares ansible inventory and vars files for the tests
         """
         # set global params for test suite
-        if self.testsuite_params.get("_global"):
-            ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
-                                        params=self.testsuite_params["_global"])
+        global_params = self.testsuite_params.get("_global", {})
+        ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
+                                    params=global_params)
 
-        if self.branch == "stable":
+        if global_params.get('config_format', '') == "stable":
             config_format = "conf"
         else:
             config_format = "json"
@@ -183,8 +179,8 @@ class TestRunner(object):
             self.instances_names = {'client': "{0}-client".format(self.custom_instance_name),
                                     'server': "{0}-server".format(self.custom_instance_name)}
         else:
-            self.instances_names = {'client': "elliptics-{0}-client".format(self.branch),
-                                    'server': "elliptics-{0}-server".format(self.branch)}
+            self.instances_names = {'client': "elliptics-client",
+                                    'server': "elliptics-server"}
         self.collect_instances_params()
         instances_cfg = instances_manager.get_instances_cfg(self.instances_params,
                                                             self.instances_names)
@@ -290,8 +286,6 @@ class TestRunner(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--branch', dest="branch", default="testing",
-                        help="branch to build from.")
     parser.add_argument('--testsuite-params', dest="testsuite_params", default="{}",
                         help="parameters which will override default parameters for specified test suite.")
     parser.add_argument('--packages-dir', dest="packages_dir",
