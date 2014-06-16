@@ -4,18 +4,15 @@
 import argparse
 import os
 import json
-import requests
 import sys
 import glob
 import ConfigParser
 import pytest
 import subprocess
-import ConfigParser
 import logging
 
 import ansible_manager
 import instances_manager
-import openstack
 import teamcity_messages
 
 # util functions
@@ -78,28 +75,9 @@ class TestRunner(object):
         self.instances_names = None
         self.instances_params = None
 
-        self.branch = self.get_distribution_branch(args.git_branch)
+        self.branch = args.branch
         self.prepare_base_environment()
 
-    def get_distribution_branch(self, branch):
-        """Checks (and stores) target branch (master/lts)
-        """
-        if branch.startswith('pull/'):
-            # get pull request number (pull/#NUMBER/merge)
-            pr_number = branch.split('/')[1]
-            url = "https://api.github.com/repos/reverbrain/elliptics/pulls/{0}".format(pr_number)
-            r = requests.get(url)
-            pr_info = r.json()
-            distribution_branch = pr_info["base"]["ref"]
-        else:
-            distribution_branch = branch
-
-        if distribution_branch == "master":
-            return "testing"
-        elif distribution_branch == "lts":
-            return "stable"
-        else:
-            raise RuntimeError("Wrong branch was specified: {0}".format(branch))
 
     def collect_tests(self):
         """Collects information about tests to run
@@ -312,8 +290,8 @@ class TestRunner(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--branch', dest="git_branch", default="master",
-                        help="target branch for pull requests.")
+    parser.add_argument('--branch', dest="branch", default="testing",
+                        help="branch to build from.")
     parser.add_argument('--testsuite-params', dest="testsuite_params", default="{}",
                         help="parameters which will override default parameters for specified test suite.")
     parser.add_argument('--packages-dir', dest="packages_dir",
