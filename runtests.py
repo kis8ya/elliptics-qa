@@ -118,17 +118,9 @@ class TestRunner(object):
         """Prepares ansible inventory and vars files for the tests
         """
         # set global params for test suite
-        global_params = self.testsuite_params.get("_global", {})
-        ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
-                                    params=global_params)
-
-        if global_params.get('config_format', '') == "stable":
-            config_format = "conf"
-        else:
-            config_format = "json"
-        params = {"elliptics_config": "templates/elliptics.{0}.j2".format(config_format)}
-        ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
-                                    params=params)
+        if self.testsuite_params.get("_global"):
+            ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
+                                        params=self.testsuite_params["_global"])
 
         for name, cfg in self.tests.items():
             groups = ansible_manager._get_groups_names(name)
