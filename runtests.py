@@ -99,19 +99,20 @@ class TestRunner(object):
         """
 
         image = "elliptics"
-        self.instances_params = {"clients": {"count": 0, "flavor": None, "image": image},
+        instances_params = {"clients": {"count": 0, "flavor": None, "image": image},
                                  "servers": {"count": 0, "flavor": None, "image": image}}
 
         for test_cfg in self.tests.values():
             test_env = test_cfg["test_env_cfg"]
             for instance_type in ["clients", "servers"]:
-                self.instances_params[instance_type]["flavor"] = max(self.instances_params[instance_type]["flavor"],
+                instances_params[instance_type]["flavor"] = max(instances_params[instance_type]["flavor"],
                                                                      test_env[instance_type]["flavor"],
                                                                      key=instances_manager._flavors_order)
-            self.instances_params["clients"]["count"] = max(self.instances_params["clients"]["count"],
+            instances_params["clients"]["count"] = max(instances_params["clients"]["count"],
                                                             test_env["clients"]["count"])
-            self.instances_params["servers"]["count"] = max(self.instances_params["servers"]["count"],
+            instances_params["servers"]["count"] = max(instances_params["servers"]["count"],
                                                             sum(test_env["servers"]["count_per_group"]))
+        return instances_params
 
     def prepare_ansible_test_files(self):
         """Prepares ansible inventory and vars files for the tests
@@ -181,7 +182,7 @@ class TestRunner(object):
         else:
             self.instances_names = {'client': "elliptics-client",
                                     'server': "elliptics-server"}
-        self.collect_instances_params()
+        self.instances_params = self.collect_instances_params()
         instances_cfg = instances_manager.get_instances_cfg(self.instances_params,
                                                             self.instances_names)
 
