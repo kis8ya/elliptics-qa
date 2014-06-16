@@ -19,33 +19,6 @@ import openstack
 import teamcity_messages
 
 # util functions
-def _decode_list(data):
-    res = []
-    for i in data:
-        res.append(_decode_value(i))
-    return res
-
-def _decode_object(data):
-    res = {}
-    for k, v in data.items():
-        if isinstance(k, unicode):
-            k = k.encode('utf-8')
-        res[k] = _decode_value(v)
-
-    return res
-
-def _decode_value(data):
-    res = data
-
-    if isinstance(data, dict):
-        res = _decode_object(data)
-    elif isinstance(data, list):
-        res = _decode_list(data)
-    elif isinstance(data, unicode):
-        res = data.encode('utf-8')
-
-    return res
-
 def qa_storage_upload(file_path):
     build_name = os.environ['TEAMCITY_BUILDCONF_NAME']
     build_name = build_name.replace(' ', '_')
@@ -94,7 +67,7 @@ class TestRunner(object):
         self.tests_dir = os.path.join(self.repo_dir, "tests")
         self.ansible_dir = os.path.join(self.repo_dir, "ansible")
         self.packages_dir = args.packages_dir
-        self.testsuite_params = json.loads(args.testsuite_params, object_hook=_decode_value)
+        self.testsuite_params = json.loads(args.testsuite_params)
         self.tags = args.tag
         self.custom_instance_name = args.custom_instance_name
 
@@ -116,7 +89,7 @@ class TestRunner(object):
             pr_number = branch.split('/')[1]
             url = "https://api.github.com/repos/reverbrain/elliptics/pulls/{0}".format(pr_number)
             r = requests.get(url)
-            pr_info = r.json(object_hook=_decode_value)
+            pr_info = r.json()
             distribution_branch = pr_info["base"]["ref"]
         else:
             distribution_branch = branch
@@ -138,7 +111,7 @@ class TestRunner(object):
 
         for test_dir in tests_dirs:
             for cfg_file in glob.glob(os.path.join(test_dir, "test_*.cfg")):
-                cfg = json.load(open(cfg_file), object_hook=_decode_value)
+                cfg = json.load(open(cfg_file))
                 if set(cfg["tags"]).intersection(set(self.tags)):
                     # test config name format: "test_NAME.cfg"
                     test_name = os.path.splitext(os.path.basename(cfg_file))[0][5:]
@@ -334,7 +307,7 @@ class TestRunner(object):
         return path
 
     def _get_vars_path(self, name):
-        path = self.abspath("group_vars/{0}.yml".format(name))
+        path = self.abspath("group_vars/{0}.json".format(name))
         return path
 
 if __name__ == "__main__":

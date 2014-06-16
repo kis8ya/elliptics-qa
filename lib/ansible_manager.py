@@ -1,6 +1,7 @@
 import os
 import sys
 import yaml
+import json
 import subprocess
 import ConfigParser
 
@@ -10,17 +11,13 @@ import teamcity_messages
 def get_vars(vars_path):
     if not os.path.isfile(vars_path):
         return {}
-
     with open(vars_path) as f:
-        data = f.read()
-        vars = yaml.load(data)
-
+        vars = json.load(f)
     return vars
 
 def set_vars(vars_path, params):
     with open(vars_path, 'w') as f:
-        content = yaml.dump(params, explicit_start=True, default_flow_style=False)
-        f.write(content)
+        json.dump(params, f)
 
 def update_vars(vars_path, params):
     vars = get_vars(vars_path)
