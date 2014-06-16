@@ -9,14 +9,14 @@ from hamcrest import assert_that, less_than_or_equal_to
 import elliptics_testhelper as et
 
 from utils import get_key_and_data, MB
+from elliptics_testhelper import nodes
 from logging_tests import logger
 
 @pytest.fixture(scope='function')
-def client():
+def client(pytestconfig, nodes):
     """Prepares elliptics.Session object with elliptics.io_flags.cache
     """
-    nodes = et.EllipticsTestHelper.get_nodes_from_args(pytest.config.getoption("node"))
-    client = et.EllipticsTestHelper(nodes=nodes, wait_timeout=3, check_timeout=30)
+    client = et.EllipticsTestHelper(nodes=nodes)
     client.set_ioflags(elliptics.io_flags.cache)
     return client
 
