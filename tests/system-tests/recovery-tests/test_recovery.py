@@ -31,8 +31,6 @@ def files_size(pytestconfig):
 def files_number(pytestconfig):
     return pytestconfig.option.files_number
 
-timeout = pytest.config.getoption("test_timeout")
-
 def key_and_data(files_size):
     if files_size:
         return get_key_and_data(files_size, randomize_len=False)
@@ -145,7 +143,6 @@ def write_data_when_two_dropped(request, client, nodes, files_number, files_size
     return write_data_when_dropped(client, nodes, files_number, files_size, 2)
 
 @pytest.mark.merge
-@pytest.mark.timeout(timeout)
 def test_one_node_option(client, nodes, write_data_when_two_dropped):
     """Tests that 'dnet_recovery --remote ... --one-node merge'
     will recover proper keys from every node
@@ -205,7 +202,6 @@ def test_one_node_option(client, nodes, write_data_when_two_dropped):
         assert_that(k, equal_to(et.utils.get_sha1(data)))
 
 @pytest.mark.merge
-@pytest.mark.timeout(timeout)
 def test_merge_add_two_nodes(client, nodes, write_data_when_two_dropped):
     """Tests that 'dnet_recovery --remote ... merge'
     will recover all keys when there were 2 dropped nodes
@@ -300,7 +296,6 @@ def write_indexes_when_groups_dropped(request, client, nodes, files_number, file
     return good_keys, bad_keys, dropped_groups, indexes
 
 @pytest.mark.dc
-@pytest.mark.timeout(timeout)
 def test_one_node_dc_with_indexes(client, nodes, write_indexes_when_groups_dropped):
     """Tests that 'dnet_recovery --remote ... --one-node dc'
     will recover all keys for every dropped group
@@ -369,7 +364,6 @@ def test_one_node_dc_with_indexes(client, nodes, write_indexes_when_groups_dropp
         assert_that(result_ids, hasitems(*ids_with_index))
 
 @pytest.mark.dc
-@pytest.mark.timeout(timeout)
 def test_dc_with_indexes(client, nodes, write_indexes_when_groups_dropped):
     """Tests that 'dnet_recovery --remote ... dc'
     will recover all keys for every dropped group
@@ -420,7 +414,6 @@ def test_dc_with_indexes(client, nodes, write_indexes_when_groups_dropped):
         assert_that(result_ids, hasitems(*ids_with_index))
 
 @pytest.mark.dc
-@pytest.mark.timeout(timeout)
 def test_nprocess_dc_with_indexes(client, nodes, write_indexes_when_groups_dropped):
     """Tests that 'dnet_recovery --nprocess=3 --remote ... dc'
     will recover all keys for every dropped group
