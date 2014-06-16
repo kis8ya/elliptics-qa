@@ -64,7 +64,11 @@ class TestRunner(object):
         self.tests_dir = os.path.join(self.repo_dir, "tests")
         self.ansible_dir = os.path.join(self.repo_dir, "ansible")
         self.packages_dir = args.packages_dir
-        self.testsuite_params = json.loads(args.testsuite_params)
+        if args.testsuite_params:
+            with open(args.testsuite_params, 'r') as f:
+                self.testsuite_params = json.load(f)
+        else:
+            self.testsuite_params = {}
         self.tags = args.tag
         self.custom_instance_name = args.custom_instance_name
 
@@ -279,8 +283,8 @@ class TestRunner(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--testsuite-params', dest="testsuite_params", default="{}",
-                        help="parameters which will override default parameters for specified test suite.")
+    parser.add_argument('--testsuite-params', dest="testsuite_params", default=None,
+                        help="path to file with parameters which will override default parameters for specified test suite.")
     parser.add_argument('--packages-dir', dest="packages_dir",
                         help="path to directory with packages to install.")
     parser.add_argument('--tag', action="append", dest="tag",
