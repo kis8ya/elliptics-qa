@@ -9,6 +9,14 @@
   git: repo=https://github.com/reverbrain/grape.git
        dest={{ grape_src }}
        version={{ grape_version }}
+  register: git_clone
+  ignore_errors: yes
+
+- name: Clone Grape sources from git (master branch)
+  git: repo=https://github.com/reverbrain/grape.git
+       dest={{ grape_src }}
+       version=master
+  when: git_clone|failed
 
 - name: Install build dependencies
   apt: pkg={{ item }} force=yes
