@@ -10,48 +10,53 @@ from collections import defaultdict
 
 import elliptics_testhelper as et
 
+from elliptics_testhelper import nodes
 from utils import get_key_and_data, get_sha1
 
-MIN_SIZE = 100
-MAX_SIZE = 1000
-config = pytest.config
-BATCH_SIZE = config.getoption('batch_size') 
-BATCH_NUMBER = config.getoption('batch_number') 
-CHECK_TIMEOUT = config.getoption('check_timeout') 
-WAIT_TIMEOUT = config.getoption('wait_timeout') 
-nodes = et.EllipticsTestHelper.get_nodes_from_args(config.getoption("node"))
+@pytest.fixture(scope='module')
+def client(pytestconfig, nodes):
+    """Prepares elliptics session with custom timeouts."""
+    check_timeout = pytestconfig.option.check_timeout
+    wait_timeout = pytestconfig.option.wait_timeout
+    client = et.EllipticsTestHelper(nodes=nodes, wait_timeout=25, check_timeout=30)
+    return client
 
-s = et.EllipticsTestHelper(nodes=nodes, wait_timeout=WAIT_TIMEOUT, check_timeout=CHECK_TIMEOUT)
-timestamp = elliptics.Time.now()
-
-ids_batches = []
-keys = set()
+@pytest.fixture(scope='module')
+def timestamp():
+    timestamp = elliptics.Time.now()
+    return timestamp
 
 @pytest.fixture()
-def put_keys(request):
-    for i in xrange(BATCH_NUMBER):
+def ids_batches(request, pytestconfig, client, timestamp):
+    MIN_SIZE = 100
+    MAX_SIZE = 1000
+    batch_size = pytestconfig.option.batch_size
+    batch_number = pytestconfig.option.batch_number
+    ids_batches = []
+    for i in xrange(batch_number):
         ids = []
         results = []
         # Generate and asynchronous writing a bunch of data
-        for j in xrange(BATCH_SIZE):
+        for j in xrange(batch_size):
             size = random.randint(MIN_SIZE, MAX_SIZE)
             key, data = get_key_and_data(size, randomize_len=False)
-            elliptics_id = s.transform(key)
+            elliptics_id = client.transform(key)
             ids.append(elliptics_id)
-            result = s.write_data(elliptics_id, data)
+            result = client.write_data(elliptics_id, data)
             results.append(result)
         ids_batches.append(ids)
         for result in results:
             result.get()
+    return ids_batches
 
-def test_elliptics(put_keys):
+def test_elliptics(client, ids_batches, timestamp):
     failures = defaultdict(list)
     for ids in ids_batches:
-        for result in s.bulk_read(ids):
+        for result in client.bulk_read(ids):
             data = str(result.data)
             elliptics_id = result.id
-            actual_elliptics_id = s.transform(get_sha1(data))
-#            actual_elliptics_id = s.transform(elliptics.Id(sha1))
+            sha1 = get_sha1(data)
+            actual_elliptics_id = client.transform(sha1)
             if elliptics_id != actual_elliptics_id:
                 failures[sha1].append("Corrupted data")
             if result.user_flags != 0:
