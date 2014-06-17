@@ -42,8 +42,8 @@ def get_parameters_from_args(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--tests-config', dest="tests_config", required=True,
-                        help="path to the file with tests parameters wich will be updated.")
+    parser.add_argument('--path', dest="tests_config", required=True,
+                        help="path to store test parameters.")
     parser.add_argument('--branch', dest="branch", default="master", required=True,
                         help="target branch for a pull request. It will specify what format to use" +
                         "for elliptics config.")
