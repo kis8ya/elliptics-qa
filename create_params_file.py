@@ -25,7 +25,7 @@ def get_distribution_branch(branch):
     else:
         raise RuntimeError("Wrong branch was specified: {0}".format(branch))
 
-def get_parameters_from_args(args):
+def get_global_parameters_from_args(args):
     params = {}
     branch = get_distribution_branch(args.branch)
     if branch == "testing":
@@ -47,6 +47,8 @@ if __name__ == "__main__":
     parser.add_argument('--branch', dest="branch", default="master", required=True,
                         help="target branch for a pull request. It will specify what format to use" +
                         "for elliptics config.")
+    parser.add_argument('--test', dest="tests", action="append", default=[],
+                        help="parameters for a specific test.")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--elliptics-version', dest="elliptics_version",
                        help="version of elliptics packages.")
@@ -55,7 +57,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     #TODO: remove _global section - all parameters should be on the 1st level
-    params = {"_global": get_parameters_from_args(args)}
+    params = {"_global": get_global_parameters_from_args(args)}
+    for t in args.tests:
+        test_params = json.loads(t)
+        params.update(test_params)
 
     with open(args.tests_config, "w") as cfg:
         json.dump(params, cfg)
