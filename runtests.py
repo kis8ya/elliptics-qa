@@ -4,18 +4,15 @@
 import argparse
 import os
 import json
-import requests
 import sys
 import glob
 import ConfigParser
 import pytest
 import subprocess
-import ConfigParser
 import logging
 
 import ansible_manager
 import instances_manager
-import openstack
 import teamcity_messages
 
 # util functions
@@ -67,7 +64,11 @@ class TestRunner(object):
         self.tests_dir = os.path.join(self.repo_dir, "tests")
         self.ansible_dir = os.path.join(self.repo_dir, "ansible")
         self.packages_dir = args.packages_dir
-        self.testsuite_params = json.loads(args.testsuite_params)
+        if args.testsuite_params:
+            with open(args.testsuite_params, 'r') as f:
+                self.testsuite_params = json.load(f)
+        else:
+            self.testsuite_params = {}
         self.tags = args.tag
         self.custom_instance_name = args.custom_instance_name
 
@@ -78,28 +79,8 @@ class TestRunner(object):
         self.instances_names = None
         self.instances_params = None
 
-        self.branch = self.get_distribution_branch(args.git_branch)
         self.prepare_base_environment()
 
-    def get_distribution_branch(self, branch):
-        """Checks (and stores) target branch (master/lts)
-        """
-        if branch.startswith('pull/'):
-            # get pull request number (pull/#NUMBER/merge)
-            pr_number = branch.split('/')[1]
-            url = "https://api.github.com/repos/reverbrain/elliptics/pulls/{0}".format(pr_number)
-            r = requests.get(url)
-            pr_info = r.json()
-            distribution_branch = pr_info["base"]["ref"]
-        else:
-            distribution_branch = branch
-
-        if distribution_branch == "master":
-            return "testing"
-        elif distribution_branch == "lts":
-            return "stable"
-        else:
-            raise RuntimeError("Wrong branch was specified: {0}".format(branch))
 
     def collect_tests(self):
         """Collects information about tests to run
@@ -120,24 +101,22 @@ class TestRunner(object):
     def collect_instances_params(self):
         """Returns information about clients and servers
         """
-        if self.branch == "stable":
-            image = "elliptics"
-        else:
-            image = "elliptics"
 
-        self.instances_params = {"clients": {"count": 0, "flavor": None, "image": image},
+        image = "elliptics"
+        instances_params = {"clients": {"count": 0, "flavor": None, "image": image},
                                  "servers": {"count": 0, "flavor": None, "image": image}}
 
         for test_cfg in self.tests.values():
             test_env = test_cfg["test_env_cfg"]
             for instance_type in ["clients", "servers"]:
-                self.instances_params[instance_type]["flavor"] = max(self.instances_params[instance_type]["flavor"],
+                instances_params[instance_type]["flavor"] = max(instances_params[instance_type]["flavor"],
                                                                      test_env[instance_type]["flavor"],
                                                                      key=instances_manager._flavors_order)
-            self.instances_params["clients"]["count"] = max(self.instances_params["clients"]["count"],
+            instances_params["clients"]["count"] = max(instances_params["clients"]["count"],
                                                             test_env["clients"]["count"])
-            self.instances_params["servers"]["count"] = max(self.instances_params["servers"]["count"],
+            instances_params["servers"]["count"] = max(instances_params["servers"]["count"],
                                                             sum(test_env["servers"]["count_per_group"]))
+        return instances_params
 
     def prepare_ansible_test_files(self):
         """Prepares ansible inventory and vars files for the tests
@@ -146,14 +125,6 @@ class TestRunner(object):
         if self.testsuite_params.get("_global"):
             ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
                                         params=self.testsuite_params["_global"])
-
-        if self.branch == "stable":
-            config_format = "conf"
-        else:
-            config_format = "json"
-        params = {"elliptics_config": "templates/elliptics.{0}.j2".format(config_format)}
-        ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
-                                    params=params)
 
         for name, cfg in self.tests.items():
             groups = ansible_manager._get_groups_names(name)
@@ -205,9 +176,9 @@ class TestRunner(object):
             self.instances_names = {'client': "{0}-client".format(self.custom_instance_name),
                                     'server': "{0}-server".format(self.custom_instance_name)}
         else:
-            self.instances_names = {'client': "elliptics-{0}-client".format(self.branch),
-                                    'server': "elliptics-{0}-server".format(self.branch)}
-        self.collect_instances_params()
+            self.instances_names = {'client': "elliptics-client",
+                                    'server': "elliptics-server"}
+        self.instances_params = self.collect_instances_params()
         instances_cfg = instances_manager.get_instances_cfg(self.instances_params,
                                                             self.instances_names)
 
@@ -312,10 +283,8 @@ class TestRunner(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--branch', dest="git_branch", default="master",
-                        help="target branch for pull requests.")
-    parser.add_argument('--testsuite-params', dest="testsuite_params", default="{}",
-                        help="parameters which will override default parameters for specified test suite.")
+    parser.add_argument('--testsuite-params', dest="testsuite_params", default=None,
+                        help="path to file with parameters which will override default parameters for specified test suite.")
     parser.add_argument('--packages-dir', dest="packages_dir",
                         help="path to directory with packages to install.")
     parser.add_argument('--tag', action="append", dest="tag",
