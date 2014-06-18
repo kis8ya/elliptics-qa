@@ -166,13 +166,8 @@ class TestRunner(object):
         """ Prepares base test environment
         """
         self.collect_tests()
-
-        if self.custom_instance_name:
-            self.instances_names = {'client': "{0}-client".format(self.custom_instance_name),
-                                    'server': "{0}-server".format(self.custom_instance_name)}
-        else:
-            self.instances_names = {'client': "elliptics-client",
-                                    'server': "elliptics-server"}
+        self.instances_names = {'client': "{0}-client".format(self.custom_instance_name),
+                                'server': "{0}-server".format(self.custom_instance_name)}
         self.instances_params = self.collect_instances_params()
         instances_cfg = instances_manager.get_instances_cfg(self.instances_params,
                                                             self.instances_names)
@@ -282,9 +277,8 @@ if __name__ == "__main__":
                         help="path to file with parameters which will override default parameters for specified test suite.")
     parser.add_argument('--tag', action="append", dest="tag",
                         help="specifying which tests to run.")
-    parser.add_argument('--custom-instance-name', dest="custom_instance_name",
-                        help="specifying custom base name for the instances.")
-
+    parser.add_argument('--instance-name', dest="instance_name", default="elliptics",
+                        help="base name for the instances.")
     parser.add_argument('--verbose', '-v', action="store_true", dest="verbose",
                         help="increase verbosity")
     parser.add_argument('--teamcity', action="store_true", dest="teamcity",
