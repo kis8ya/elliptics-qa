@@ -14,21 +14,24 @@ from logging_tests import logger
 
 @pytest.fixture(scope='function')
 def client(pytestconfig, nodes):
-    """Prepares elliptics.Session object with elliptics.io_flags.cache
-    """
+    """Prepares elliptics.Session object with elliptics.io_flags.cache."""
     client = et.EllipticsTestHelper(nodes=nodes)
     client.set_ioflags(elliptics.io_flags.cache)
     return client
 
 def test_cache_overhead(client):
     """Testing that elliptics will process commands just in time
-    when there is a cache overhead
+    when there is a cache overhead.
     """
     count = 100000
     logger.info("\n0/{0}".format(count))
     for i in xrange(count):
         key = str(i)
-        client.write_data_sync(key, '?')
+        try:
+            # check that command will not raise elliptics.TimeoutError
+            client.write_data_sync(key, '?')
+        except elliptics.TimeoutError as e:
+            assert e is None, e
         logger.info('\r{0}/{1}'.format(i + 1, count))
 
 @pytest.fixture
@@ -36,6 +39,7 @@ def requests_number(pytestconfig):
     return pytestconfig.option.requests_number
 
 def time_requests(client, requests_count, hot_keys, cold_keys):
+    """Returns time which was spent to process numerous requests."""
     start_time = time.time()
 
     hot_requests_percentage = 0.8
@@ -52,7 +56,7 @@ def time_requests(client, requests_count, hot_keys, cold_keys):
 
 def test_cache_lru(client, requests_number):
     """Testing that data requests will take not too much more time
-    after stuffing cache with unused data
+    after stuffing cache with unused data.
     """
     hot_keys_count = 5000
     cold_keys_count = 45000

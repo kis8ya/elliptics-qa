@@ -5,27 +5,30 @@
     - cocaine-tools={{ cocaine_tools_version }}
     - cocaine-framework-python={{ cocaine_framework_python_version }}
 
+- name: Install aptitude and pbuilder
+  apt: pkg={{ item }}
+  with_items:
+    - pbuilder
+    - aptitude
+
 - name: Clone Grape sources from git
   git: repo=https://github.com/reverbrain/grape.git
        dest={{ grape_src }}
        version={{ grape_version }}
+  register: git_clone
+  ignore_errors: yes
+
+- name: Clone Grape sources from git (master branch)
+  git: repo=https://github.com/reverbrain/grape.git
+       dest={{ grape_src }}
+       version=master
+  when: git_clone|failed
 
 - name: Install build dependencies
-  apt: pkg={{ item }} force=yes
-  with_items:
-    - devscripts
-    - debhelper
-    - cdbs
-    - build-essential
-    - cmake
-    - libboost-system-dev
-    - libboost-program-options-dev
-    - elliptics-dev={{ elliptics_version }}
-    - libcocaine-core2={{ libcocaine_version }}
-    - libcocaine-dev={{ libcocaine_version }}
-    - cocaine-framework-native={{ cocaine_framework_native_version }}
-    - cocaine-framework-native-dev={{ cocaine_framework_native_version }}
-    - libgtest-dev
+  shell: sudo /usr/lib/pbuilder/pbuilder-satisfydepends --control {{ grape_src }}/debian/control
+
+- name: Install packages with custom versions
+  apt: pkg=elliptics-dev={{ elliptics_version }},libcocaine-core2={{ libcocaine_version }},libcocaine-dev={{ libcocaine_version }},cocaine-framework-native={{ cocaine_framework_native_version }},cocaine-framework-native-dev={{ cocaine_framework_native_version }} force=yes
 
 - name: Build Grape
   shell: cd {{ grape_src }}; debuild -uc -us -tc -i -I
