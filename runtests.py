@@ -285,7 +285,11 @@ class TestRunner(object):
                                      self.get_inventory_path(test_name))
 
     def run_pytest_test(self, test_name):
-        files_to_sync = ["elliptics_testhelper.py", "utils.py", "logging_tests.py", "logger.ini"]
+        #TODO: remove this list of files
+        # It can be replaced with copying all files from lib
+        # or we can create separted directory for files which is needed for tests.
+        files_to_sync = ["elliptics_testhelper.py", "utils.py", "logging_tests.py",
+                         "logger.ini", "matchers.py"]
         rsyncdir_opts = "--rsyncdir tests/{0}/".format(self.tests[test_name]["dir"])
         for f in files_to_sync:
             rsyncdir_opts += " --rsyncdir lib/{0}".format(f)

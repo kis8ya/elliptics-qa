@@ -14,7 +14,8 @@ import elliptics
 import elliptics_testhelper as et
 
 from elliptics_testhelper import nodes
-from utils import MB, get_key_and_data, hasitems
+from utils import MB, get_key_and_data
+from matchers import hasitems
 from logging_tests import logger
 
 @pytest.fixture(scope='module')
