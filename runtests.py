@@ -168,16 +168,16 @@ class TestRunner(object):
         self.prepare_ansible_test_files()
         self.install_elliptics_packages()
 
-    def generate_pytest_cfg(self, test_name):
+    def generate_pytest_cfg(self, test_config):
         """Generates pytest.ini with test options
         """
-        opts = self.tests[test_name]["addopts"].format(**self.tests[test_name]["params"])
+        opts = test_config["addopts"].format(**test_config["params"])
 
-        servers_per_group = self.tests[test_name]["test_env_cfg"]["servers"]["count_per_group"]
+        servers_per_group = test_config["test_env_cfg"]["servers"]["count_per_group"]
         groups_count = len(servers_per_group)
         servers_names = ansible_manager.get_host_names(self.instances_names['server'],
                                                        sum(servers_per_group))
-        server_name = (x for x in servers_names)
+        server_name = iter(servers_names)
         for g in xrange(groups_count):
             for i in xrange(servers_per_group[g]):
                 opts += ' --node={0}.i.fog.yandex.net:1025:{1}'.format(next(server_name), g + 1)
@@ -197,8 +197,8 @@ class TestRunner(object):
                                      self.get_inventory_path(test_name))
 
         # Check if it's a pytest test
-        if test.get("dir"):
-            self.generate_pytest_cfg(test_name)
+        if "dir" in test:
+            self.generate_pytest_cfg(test)
 
         cfg_info = "Test environment configuration:\n\tclients: {0}\n\tservers per group: {1}"
         self.logger.info(cfg_info.format(test["test_env_cfg"]["clients"]["count"],
