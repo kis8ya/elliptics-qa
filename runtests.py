@@ -111,7 +111,7 @@ class TestRunner(object):
 
         servers_params['flavor'] = max((test_params['flavor'] for test_params in tests_params),
                                        key=instances_manager._flavors_order)
-        servers_params['count'] = max(sum(test_params['count']['count_per_group']) for test_params in tests_params)
+        servers_params['count'] = max(sum(test_params['count_per_group']) for test_params in tests_params)
 
         return instances_params
 
