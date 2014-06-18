@@ -18,13 +18,14 @@ def client(pytestconfig, nodes):
     """Prepares elliptics session with custom timeouts."""
     check_timeout = pytestconfig.option.check_timeout
     wait_timeout = pytestconfig.option.wait_timeout
-    client = et.EllipticsTestHelper(nodes=nodes, wait_timeout=25, check_timeout=30)
+    client = et.EllipticsTestHelper(nodes=nodes,
+                                    wait_timeout=wait_timeout,
+                                    check_timeout=check_timeout)
     return client
 
 @pytest.fixture(scope='module')
 def timestamp():
-    timestamp = elliptics.Time.now()
-    return timestamp
+    return elliptics.Time.now()
 
 @pytest.fixture()
 def ids_batches(request, pytestconfig, client, timestamp):
