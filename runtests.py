@@ -63,7 +63,6 @@ class TestRunner(object):
         self.repo_dir = os.path.dirname(os.path.abspath(__file__))
         self.tests_dir = os.path.join(self.repo_dir, "tests")
         self.ansible_dir = os.path.join(self.repo_dir, "ansible")
-        self.packages_dir = args.packages_dir
         if args.testsuite_params:
             with open(args.testsuite_params, 'r') as f:
                 self.testsuite_params = json.load(f)
@@ -158,10 +157,6 @@ class TestRunner(object):
         vars_path = self._get_vars_path('clients')
         ansible_manager.update_vars(vars_path=vars_path,
                                     params={"repo_dir": self.repo_dir})
-
-        if self.packages_dir:
-            ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
-                                        params={"packages_dir": self.packages_dir})
 
         ansible_manager.run_playbook(self.abspath(base_setup_playbook),
                                      inventory_path)
@@ -285,8 +280,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--testsuite-params', dest="testsuite_params", default=None,
                         help="path to file with parameters which will override default parameters for specified test suite.")
-    parser.add_argument('--packages-dir', dest="packages_dir",
-                        help="path to directory with packages to install.")
     parser.add_argument('--tag', action="append", dest="tag",
                         help="specifying which tests to run.")
     parser.add_argument('--custom-instance-name', dest="custom_instance_name",
