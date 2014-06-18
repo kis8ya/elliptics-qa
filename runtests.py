@@ -60,22 +60,22 @@ def setup_loggers(teamcity, verbose):
 
 class TestRunner(object):
     def __init__(self, args):
-        self.repo_dir = os.path.dirname(os.path.abspath(__file__))
-        self.tests_dir = os.path.join(self.repo_dir, "tests")
-        self.ansible_dir = os.path.join(self.repo_dir, "ansible")
+        repo_dir = os.path.dirname(os.path.abspath(__file__))
+        self.tests_dir = os.path.join(repo_dir, "tests")
+        self.ansible_dir = os.path.join(repo_dir, "ansible")
         if args.testsuite_params:
             with open(args.testsuite_params, 'r') as f:
                 self.testsuite_params = json.load(f)
         else:
             self.testsuite_params = {}
-        self.instance_name = args.instance_name
 
         self.logger = logging.getLogger('runner_logger')
         self.teamcity = args.teamcity
 
         self.tests = self.collect_tests(args.tags)
-        self.instances_names = None
-        self.instances_params = None
+        self.instances_names = {'client': "{0}-client".format(args.instance_name),
+                                'server': "{0}-server".format(args.instance_name)}
+        self.instances_params = self.collect_instances_params()
 
         self.prepare_base_environment()
 
@@ -84,7 +84,7 @@ class TestRunner(object):
         """
         tests = {}
         for root, dirs, filenames in os.walk(self.tests_dir):
-            for filename in fnmatch.filter(filenames, 'test_*.cfg'): 
+            for filename in fnmatch.filter(filenames, 'test_*.cfg'):
                 cfg = json.load(open(os.path.join(root, filename)))
                 if set(cfg["tags"]).intersection(set(tags)):
                     # test config name format: "test_NAME.cfg"
@@ -149,10 +149,6 @@ class TestRunner(object):
                                                 groups=groups,
                                                 instances_names=self.instances_names)
 
-        vars_path = self._get_vars_path('clients')
-        ansible_manager.update_vars(vars_path=vars_path,
-                                    params={"repo_dir": self.repo_dir})
-
         ansible_manager.run_playbook(self.abspath(base_setup_playbook),
                                      inventory_path)
 
@@ -160,10 +156,6 @@ class TestRunner(object):
     def prepare_base_environment(self):
         """ Prepares base test environment
         """
-        self.collect_tests()
-        self.instances_names = {'client': "{0}-client".format(self.custom_instance_name),
-                                'server': "{0}-server".format(self.custom_instance_name)}
-        self.instances_params = self.collect_instances_params()
         instances_cfg = instances_manager.get_instances_cfg(self.instances_params,
                                                             self.instances_names)
 
@@ -289,12 +281,9 @@ if __name__ == "__main__":
     with teamcity_messages.block("LOGS: Collecting logs"):
         ansible_manager.run_playbook(testrunner.abspath("collect-logs"),
                                      testrunner.get_inventory_path("test-env-prepare"))
-        if args.teamcity:
-            path = "/tmp/logs-archive"
-            logs = []
-            for f in os.listdir(path):
-                logs.append(qa_storage_upload(os.path.join(path, f)))
 
     if args.teamcity:
         with teamcity_messages.block("LOGS: Links"):
-            print('\n'.join(logs))
+            path = "/tmp/logs-archive"
+            for f in os.listdir(path):
+                print(qa_storage_upload(os.path.join(path, f)))
