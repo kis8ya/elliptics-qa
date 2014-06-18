@@ -9,7 +9,7 @@ from hamcrest import assert_that, equal_to, calling, raises, has_property, has_l
 import elliptics_testhelper as et
 from elliptics_testhelper import key_and_data, timestamp, user_flags, client, nodes
 import utils
-from utils import elliptics_result_with
+from matchers import elliptics_result_with
 
 def get_length(data):
     return sum(len(i) for i in data)
