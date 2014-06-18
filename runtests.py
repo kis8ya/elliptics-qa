@@ -96,20 +96,23 @@ class TestRunner(object):
         """Returns information about clients and servers
         """
 
-        image = "elliptics"
-        instances_params = {"clients": {"count": 0, "flavor": None, "image": image},
-                            "servers": {"count": 0, "flavor": None, "image": image}}
+        instances_params = {'clients': {'count': 0, 'flavor': None, 'image': 'elliptics'},
+                            'servers': {'count': 0, 'flavor': None, 'image': 'elliptics'}}
 
-        for test_cfg in self.tests.values():
-            test_env = test_cfg["test_env_cfg"]
-            for instance_type in ["clients", "servers"]:
-                instances_params[instance_type]["flavor"] = max(instances_params[instance_type]["flavor"],
-                                                                test_env[instance_type]["flavor"],
-                                                                key=instances_manager._flavors_order)
-            instances_params["clients"]["count"] = max(instances_params["clients"]["count"],
-                                                       test_env["clients"]["count"])
-            instances_params["servers"]["count"] = max(instances_params["servers"]["count"],
-                                                       sum(test_env["servers"]["count_per_group"]))
+        clients_params = instances_params['clients']
+        tests_params = [test_cfg['test_env_cfg']['clients'] for test_cfg in self.tests.values()]
+
+        clients_params['flavor'] = max((test_params['flavor'] for test_params in tests_params),
+                                       key=instances_manager._flavors_order)
+        clients_params['count'] = max(test_params['count'] for test_params in tests_params)
+
+        servers_params = instances_params['servers']
+        tests_params = [test_cfg['test_env_cfg']['servers'] for test_cfg in self.tests.values()]
+
+        servers_params['flavor'] = max((test_params['flavor'] for test_params in tests_params),
+                                       key=instances_manager._flavors_order)
+        servers_params['count'] = max(sum(test_params['count']['count_per_group']) for test_params in tests_params)
+
         return instances_params
 
     def prepare_ansible_test_files(self):
@@ -182,10 +185,10 @@ class TestRunner(object):
         pytest_config = ConfigParser.ConfigParser()
         pytest_config.add_section("pytest")
         pytest_config.set("pytest", "addopts", opts)
+
+        self.logger.info(opts)
         with open(os.path.join(self.tests_dir, "pytest.ini"), "w") as config_file:
             pytest_config.write(config_file)
-
-        self.logger.info((open(os.path.join(self.tests_dir, "pytest.ini"))).read())
 
     def setup(self, test_name):
         test = self.tests[test_name]
