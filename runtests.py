@@ -5,7 +5,7 @@ import argparse
 import os
 import json
 import sys
-import glob
+import fnmatch
 import ConfigParser
 import pytest
 import subprocess
@@ -68,33 +68,29 @@ class TestRunner(object):
                 self.testsuite_params = json.load(f)
         else:
             self.testsuite_params = {}
-        self.tags = args.tag
-        self.custom_instance_name = args.custom_instance_name
+        self.instance_name = args.instance_name
 
         self.logger = logging.getLogger('runner_logger')
         self.teamcity = args.teamcity
 
-        self.tests = None
+        self.tests = self.collect_tests(args.tags)
         self.instances_names = None
         self.instances_params = None
 
         self.prepare_base_environment()
 
-    def collect_tests(self):
-        """Collects information about tests to run
+    def collect_tests(self, tags):
+        """Collects tests' configs with given tags
         """
-        self.tests = {}
-        # Collect all tests with specific tags
-        tests_dirs = [os.path.join(self.tests_dir, s) for s in os.listdir(self.tests_dir)
-                      if os.path.isdir(os.path.join(self.tests_dir, s))]
-
-        for test_dir in tests_dirs:
-            for cfg_file in glob.glob(os.path.join(test_dir, "test_*.cfg")):
-                cfg = json.load(open(cfg_file))
-                if set(cfg["tags"]).intersection(set(self.tags)):
+        tests = {}
+        for root, dirs, filenames in os.walk(self.tests_dir):
+            for filename in fnmatch.filter(filenames, 'test_*.cfg'): 
+                cfg = json.load(open(os.path.join(root, filename)))
+                if set(cfg["tags"]).intersection(set(tags)):
                     # test config name format: "test_NAME.cfg"
-                    test_name = os.path.splitext(os.path.basename(cfg_file))[0][5:]
-                    self.tests[test_name] = cfg
+                    test_name = os.path.splitext(filename)[0][5:]
+                    tests[test_name] = cfg
+        return tests
 
     def collect_instances_params(self):
         """Returns information about clients and servers
@@ -274,7 +270,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--testsuite-params', dest="testsuite_params", default=None,
                         help="path to file with parameters which will override default parameters for specified test suite.")
-    parser.add_argument('--tag', action="append", dest="tag",
+    parser.add_argument('--tag', action="append", dest="tags",
                         help="specifying which tests to run.")
     parser.add_argument('--instance-name', dest="instance_name", default="elliptics",
                         help="base name for the instances.")
