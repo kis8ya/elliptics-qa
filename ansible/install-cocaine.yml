@@ -9,5 +9,11 @@
 
 - hosts: servers
   tasks:
-    - name: Install Grape libs
-      shell: dpkg -i grape*deb
+    - name: Install grape packages
+      shell: dpkg --force-depends --install grape*deb
+
+    - name: Install grape packages dependencies
+      shell: apt-get --fix-broken --assume-yes install
+
+    - name: Ensure grape packages are installed correct
+      shell: dpkg --install  grape*deb
