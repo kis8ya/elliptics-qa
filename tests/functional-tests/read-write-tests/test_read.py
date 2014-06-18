@@ -5,7 +5,6 @@ import elliptics
 
 from hamcrest import assert_that, equal_to, calling, raises, is_
 import sys
-print(sys.path)
 import elliptics_testhelper as et
 from elliptics_testhelper import key_and_data, timestamp, user_flags, client, nodes
 import utils
