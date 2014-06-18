@@ -80,7 +80,6 @@ class TestRunner(object):
 
         self.prepare_base_environment()
 
-
     def collect_tests(self):
         """Collects information about tests to run
         """
@@ -103,18 +102,18 @@ class TestRunner(object):
 
         image = "elliptics"
         instances_params = {"clients": {"count": 0, "flavor": None, "image": image},
-                                 "servers": {"count": 0, "flavor": None, "image": image}}
+                            "servers": {"count": 0, "flavor": None, "image": image}}
 
         for test_cfg in self.tests.values():
             test_env = test_cfg["test_env_cfg"]
             for instance_type in ["clients", "servers"]:
                 instances_params[instance_type]["flavor"] = max(instances_params[instance_type]["flavor"],
-                                                                     test_env[instance_type]["flavor"],
-                                                                     key=instances_manager._flavors_order)
+                                                                test_env[instance_type]["flavor"],
+                                                                key=instances_manager._flavors_order)
             instances_params["clients"]["count"] = max(instances_params["clients"]["count"],
-                                                            test_env["clients"]["count"])
+                                                       test_env["clients"]["count"])
             instances_params["servers"]["count"] = max(instances_params["servers"]["count"],
-                                                            sum(test_env["servers"]["count_per_group"]))
+                                                       sum(test_env["servers"]["count_per_group"]))
         return instances_params
 
     def prepare_ansible_test_files(self):
