@@ -61,10 +61,8 @@ def key_and_data():
 
 @pytest.fixture(scope='function')
 def timestamp():
-    """ Returns timestamp
-    """
-    timestamp = elliptics.Time.now()
-    return timestamp
+    """Returns elliptics timestamp."""
+    return elliptics.Time.now()
 
 @pytest.fixture(scope='function')
 def user_flags():

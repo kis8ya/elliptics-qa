@@ -9,7 +9,7 @@ import elliptics_testhelper as et
 from elliptics_testhelper import key_and_data, timestamp, user_flags, client, nodes
 
 import utils
-from utils import elliptics_result_with
+from matchers import elliptics_result_with
 from testcases import offset_and_chunksize_types_list, \
                       write_offset_type_and_overriding_list
 
