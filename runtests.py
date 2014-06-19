@@ -63,6 +63,7 @@ class TestRunner(object):
         repo_dir = os.path.dirname(os.path.abspath(__file__))
         self.tests_dir = os.path.join(repo_dir, "tests")
         self.ansible_dir = os.path.join(repo_dir, "ansible")
+        self.configs_dir = args.configs_dir
         if args.testsuite_params:
             with open(args.testsuite_params, 'r') as f:
                 self.testsuite_params = json.load(f)
@@ -83,7 +84,7 @@ class TestRunner(object):
         """Collects tests' configs with given tags
         """
         tests = {}
-        for root, dirs, filenames in os.walk(self.tests_dir):
+        for root, dirs, filenames in os.walk(self.configs_dir):
             for filename in fnmatch.filter(filenames, 'test_*.cfg'):
                 cfg = json.load(open(os.path.join(root, filename)))
                 if set(cfg["tags"]).intersection(set(tags)):
@@ -263,6 +264,8 @@ class TestRunner(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument('--configs-dir', dest="configs_dir", required=True,
+                        help="directory with tests' configs")
     parser.add_argument('--testsuite-params', dest="testsuite_params", default=None,
                         help="path to file with parameters which will override default parameters for specified test suite.")
     parser.add_argument('--tag', action="append", dest="tags",
