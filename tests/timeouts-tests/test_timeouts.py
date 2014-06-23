@@ -2,8 +2,6 @@
 #
 import pytest
 import elliptics
-import subprocess
-import shlex
 import time
 import random
 import math
