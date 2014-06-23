@@ -1,0 +1,35 @@
+---
+- include: ../elliptics-start.yml
+
+- hosts: clients
+  tasks:
+    - name: Install proxy packages
+      apt: name={{ item }}
+      with_items:
+        - fastcgi-daemon2
+        - libfastcgi2-syslog
+        - elliptics-fastcgi=2.0.22~ell25
+        - nginx
+
+    - name: Create tmp directory
+      file: path={{ item }} state=directory
+      with_items:
+        - "{{ fastcgi_log_dir }}"
+        - "{{ fastcgi_tmp_dir }}"
+
+    - name: Prepare nginx config
+      template: src=templates/nginx.conf dest=/etc/nginx/nginx.conf
+
+    - name: Prepare fastcgi-daemon config
+      template: src=templates/fastcgi_config.xml dest={{ fastcgi_config_path }}
+
+    - name: Start nginx
+      shell: nginx
+
+    - name: Start fastcgi-daemon
+      shell: >
+        start-stop-daemon
+        --name={{ fastcgi_daemon_name }}
+        --background
+        --exec=/usr/sbin/fastcgi-daemon2
+        --start -- --config={{ fastcgi_config_path }}

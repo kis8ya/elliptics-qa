@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<fastcgi xmlns:xi="http://www.w3.org/2001/XInclude">
+<pools>
+        <pool name="read" threads="4" queue="16"/>
+        <pool name="write" threads="2" queue="16"/>
+        <pool name="ping" threads="1" queue="4"/>
+</pools>
+<handlers>
+    <handler pool="read" port="1083" url="/(download-info|get).*">
+        <component name="elliptics-proxy"/>
+    </handler>
+    <handler pool="write" port="1083" url="/(upload|delete).*">
+        <component name="elliptics-proxy"/>
+    </handler>
+    <handler pool="ping" port="1083" url="/(ping|stat|stat_log|stat-log).*">
+        <component name="elliptics-proxy"/>
+    </handler>
+    <handler pool="ping" port="9004" url="/(ping|stat|stat_log|stat-log).*">
+        <component name="elliptics-proxy"/>
+    </handler>
+</handlers>
+<components>
+    <component name="elliptics-proxy" type="elliptics-proxy:elliptics-proxy">
+        <logger>daemon-logger</logger>
+        <dnet>
+            <cfg-flags>2</cfg-flags>
+            <die-limit>1</die-limit>
+            <base-port>1024</base-port>
+            <eblob_style_path>1</eblob_style_path>
+            <read_chunk_size>1048576</read_chunk_size>
+            <!-- <success-copies-num>-3</success-copies-num> -->
+            <directory-bit-num>16</directory-bit-num>
+            <log>
+                <path>{{ fastcgi_log_dir }}/dnet.log</path>
+                <mask>3</mask>
+            </log>
+            <remote>
+{%- for host in groups['servers'] %}
+
+                <addr>{{host}}:1025:2</addr>
+{%- endfor %}
+            </remote>
+            <groups>1</groups>
+            <replication-count>2</replication-count>
+            <!--Typemap: file extention -> content type-->
+            <typemap>
+                <type>tst->text/deritest</type>
+            </typemap>
+            <!--Allow list: what file extentions allowed to download-->
+            <!--<allow>
+                <extention>txt</extention>
+                <extention>jpg</extention>
+                <extention>xml</extention>
+            </allow>-->
+            <!--Deny list: what file extentions denied to download-->
+            <!--<deny>
+                <extention>*</extention>
+            </deny>-->
+        </dnet>
+    </component>
+    <component name="daemon-logger" type="logger:logger">
+       <level>DEBUG</level>
+       <control-uri>/log</control-uri>
+        <ident>fastcgi-proxy</ident>
+        <path>{{ fastcgi_log_dir }}/fastcgi-ep.log</path>
+    </component>
+</components>
+<modules>
+    <module name="elliptics-proxy" path="/usr/lib/fastcgi2/elliptics-fastcgi.so"/>
+    <module name="logger" path="/usr/lib/fastcgi2/fastcgi2-syslog.so"/>
+</modules>
+<daemon>
+    <logger component="daemon-logger"/>
+    <endpoint>
+        <backlog>128</backlog>
+        <socket>{{ fastcgi_tmp_dir }}/elliptics-proxy.sock</socket>
+        <threads>1</threads>
+    </endpoint>
+    <pidfile>/tmp/pid/elliptics-proxy.pid</pidfile>
+    <monitor_port>21083</monitor_port>
+</daemon>
+</fastcgi>
