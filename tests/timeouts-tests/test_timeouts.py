@@ -19,7 +19,7 @@ def client(pytestconfig, nodes):
     """Prepares elliptics session with custom timeouts."""
     wait_timeout = pytestconfig.option.wait_timeout
     check_timeout = pytestconfig.option.check_timeout
-    client = et.EllipticsTestHelper(nodes=nodes,
+    client = et.EllipticsTestHelper(nodes,
                                     wait_timeout=wait_timeout,
                                     check_timeout=check_timeout)
     return client
@@ -150,7 +150,7 @@ def client_shuffling_off(pytestconfig, nodes):
     wait_timeout = pytestconfig.option.wait_timeout
     check_timeout = pytestconfig.option.check_timeout
 
-    client = et.EllipticsTestHelper(nodes=nodes,
+    client = et.EllipticsTestHelper(nodes,
                                     wait_timeout=wait_timeout,
                                     check_timeout=check_timeout,
                                     config=config)
