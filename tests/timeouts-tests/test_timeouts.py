@@ -4,7 +4,6 @@ import pytest
 import elliptics
 import time
 import random
-import math
 
 from hamcrest import assert_that, calling, raises, less_than, greater_than, all_of
 
@@ -84,11 +83,9 @@ def write_with_quorum_check(request, client, key_and_data):
 
 @pytest.fixture(scope='function')
 def quorum_checker_positive(request, nodes, write_with_quorum_check):
-    """ Chooses random nodes and drops them
-    (nodes_count = ceil(groups_count / 2) - 1)
-    """
+    """ Chooses random nodes (nodes quorum is absent) and drops them."""
     client, res = write_with_quorum_check
-    dnodes_count = len(nodes) >> 1 - (len(nodes) & 1 ^ 1)
+    dnodes_count = (len(nodes)-1) / 2
     dnodes = random.sample(nodes, dnodes_count)
 
     for node in dnodes:
@@ -113,11 +110,9 @@ def test_quorum_checker_positive(quorum_checker_positive):
 
 @pytest.fixture(scope='function')
 def quorum_checker_negative(request, nodes, write_with_quorum_check):
-    """ Chooses random nodes and drops it
-    (nodes_count = ceil(groups_count / 2))
-    """
+    """ Chooses random nodes (nodes quorum is present) and drops it."""
     client, res = write_with_quorum_check
-    dnodes_count = int(math.ceil(len(nodes) / 2.0))
+    dnodes_count = (len(nodes)+1) / 2
     dnodes = random.sample(nodes, dnodes_count)
     
     for node in dnodes:

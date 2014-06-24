@@ -1,5 +1,4 @@
 import pytest
-import math
 import time
 import random
 import elliptics
@@ -42,7 +41,7 @@ def key(client):
 def unavailable_groups(request, client, nodes):
     """Drops nodes from half groups and returns these groups."""
     groups_count = len(client.groups)
-    groups_count_to_drop = int(math.ceil(groups_count / 2.0))
+    groups_count_to_drop = (groups_count+1) / 2
     groups_to_drop = random.sample(client.groups, groups_count_to_drop)
     dropped_groups = drop_groups(client, nodes, groups_to_drop)
 
