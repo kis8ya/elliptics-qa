@@ -15,6 +15,8 @@ import ansible_manager
 import instances_manager
 import teamcity_messages
 
+from config_template_renderer import get_cfg
+
 # util functions
 def qa_storage_upload(file_path):
     build_name = os.environ['TEAMCITY_BUILDCONF_NAME']
@@ -73,9 +75,9 @@ class TestRunner(object):
         self.logger = logging.getLogger('runner_logger')
         self.teamcity = args.teamcity
 
-        self.tests = self.collect_tests(args.tags)
         self.instances_names = {'client': "{0}-client".format(args.instance_name),
                                 'server': "{0}-server".format(args.instance_name)}
+        self.tests = self.collect_tests(args.tags)
         self.instances_params = self.collect_instances_params()
 
         self.prepare_base_environment()
@@ -86,7 +88,8 @@ class TestRunner(object):
         tests = {}
         for root, dirs, filenames in os.walk(self.configs_dir):
             for filename in fnmatch.filter(filenames, 'test_*.cfg'):
-                cfg = json.load(open(os.path.join(root, filename)))
+                path = os.path.abspath(os.path.join(root, filename))
+                cfg = get_cfg(path, self.instances_names)
                 if set(cfg["tags"]).intersection(set(tags)):
                     # test config name format: "test_NAME.cfg"
                     test_name = os.path.splitext(filename)[0][5:]
