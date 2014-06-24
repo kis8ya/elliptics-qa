@@ -5,7 +5,7 @@ import argparse
 import os
 import json
 import sys
-import glob
+import fnmatch
 import ConfigParser
 import pytest
 import subprocess
@@ -60,61 +60,60 @@ def setup_loggers(teamcity, verbose):
 
 class TestRunner(object):
     def __init__(self, args):
-        self.repo_dir = os.path.dirname(os.path.abspath(__file__))
-        self.tests_dir = os.path.join(self.repo_dir, "tests")
-        self.ansible_dir = os.path.join(self.repo_dir, "ansible")
+        repo_dir = os.path.dirname(os.path.abspath(__file__))
+        self.tests_dir = os.path.join(repo_dir, "tests")
+        self.ansible_dir = os.path.join(repo_dir, "ansible")
+        self.configs_dir = args.configs_dir
         if args.testsuite_params:
             with open(args.testsuite_params, 'r') as f:
                 self.testsuite_params = json.load(f)
         else:
             self.testsuite_params = {}
-        self.tags = args.tag
-        self.custom_instance_name = args.custom_instance_name
 
         self.logger = logging.getLogger('runner_logger')
         self.teamcity = args.teamcity
 
-        self.tests = None
-        self.instances_names = None
-        self.instances_params = None
+        self.tests = self.collect_tests(args.tags)
+        self.instances_names = {'client': "{0}-client".format(args.instance_name),
+                                'server': "{0}-server".format(args.instance_name)}
+        self.instances_params = self.collect_instances_params()
 
         self.prepare_base_environment()
 
-
-    def collect_tests(self):
-        """Collects information about tests to run
+    def collect_tests(self, tags):
+        """Collects tests' configs with given tags
         """
-        self.tests = {}
-        # Collect all tests with specific tags
-        tests_dirs = [os.path.join(self.tests_dir, s) for s in os.listdir(self.tests_dir)
-                      if os.path.isdir(os.path.join(self.tests_dir, s))]
-
-        for test_dir in tests_dirs:
-            for cfg_file in glob.glob(os.path.join(test_dir, "test_*.cfg")):
-                cfg = json.load(open(cfg_file))
-                if set(cfg["tags"]).intersection(set(self.tags)):
+        tests = {}
+        for root, dirs, filenames in os.walk(self.configs_dir):
+            for filename in fnmatch.filter(filenames, 'test_*.cfg'):
+                cfg = json.load(open(os.path.join(root, filename)))
+                if set(cfg["tags"]).intersection(set(tags)):
                     # test config name format: "test_NAME.cfg"
-                    test_name = os.path.splitext(os.path.basename(cfg_file))[0][5:]
-                    self.tests[test_name] = cfg
+                    test_name = os.path.splitext(filename)[0][5:]
+                    tests[test_name] = cfg
+        return tests
 
     def collect_instances_params(self):
         """Returns information about clients and servers
         """
 
-        image = "elliptics"
-        instances_params = {"clients": {"count": 0, "flavor": None, "image": image},
-                                 "servers": {"count": 0, "flavor": None, "image": image}}
+        instances_params = {'clients': {'count': 0, 'flavor': None, 'image': 'elliptics'},
+                            'servers': {'count': 0, 'flavor': None, 'image': 'elliptics'}}
 
-        for test_cfg in self.tests.values():
-            test_env = test_cfg["test_env_cfg"]
-            for instance_type in ["clients", "servers"]:
-                instances_params[instance_type]["flavor"] = max(instances_params[instance_type]["flavor"],
-                                                                     test_env[instance_type]["flavor"],
-                                                                     key=instances_manager._flavors_order)
-            instances_params["clients"]["count"] = max(instances_params["clients"]["count"],
-                                                            test_env["clients"]["count"])
-            instances_params["servers"]["count"] = max(instances_params["servers"]["count"],
-                                                            sum(test_env["servers"]["count_per_group"]))
+        clients_params = instances_params['clients']
+        tests_params = [test_cfg['test_env_cfg']['clients'] for test_cfg in self.tests.values()]
+
+        clients_params['flavor'] = max((test_params['flavor'] for test_params in tests_params),
+                                       key=instances_manager._flavors_order)
+        clients_params['count'] = max(test_params['count'] for test_params in tests_params)
+
+        servers_params = instances_params['servers']
+        tests_params = [test_cfg['test_env_cfg']['servers'] for test_cfg in self.tests.values()]
+
+        servers_params['flavor'] = max((test_params['flavor'] for test_params in tests_params),
+                                       key=instances_manager._flavors_order)
+        servers_params['count'] = max(sum(test_params['count_per_group']) for test_params in tests_params)
+
         return instances_params
 
     def prepare_ansible_test_files(self):
@@ -154,10 +153,6 @@ class TestRunner(object):
                                                 groups=groups,
                                                 instances_names=self.instances_names)
 
-        vars_path = self._get_vars_path('clients')
-        ansible_manager.update_vars(vars_path=vars_path,
-                                    params={"repo_dir": self.repo_dir})
-
         ansible_manager.run_playbook(self.abspath(base_setup_playbook),
                                      inventory_path)
 
@@ -165,15 +160,6 @@ class TestRunner(object):
     def prepare_base_environment(self):
         """ Prepares base test environment
         """
-        self.collect_tests()
-
-        if self.custom_instance_name:
-            self.instances_names = {'client': "{0}-client".format(self.custom_instance_name),
-                                    'server': "{0}-server".format(self.custom_instance_name)}
-        else:
-            self.instances_names = {'client': "elliptics-client",
-                                    'server': "elliptics-server"}
-        self.instances_params = self.collect_instances_params()
         instances_cfg = instances_manager.get_instances_cfg(self.instances_params,
                                                             self.instances_names)
 
@@ -183,16 +169,16 @@ class TestRunner(object):
         self.prepare_ansible_test_files()
         self.install_elliptics_packages()
 
-    def generate_pytest_cfg(self, test_name):
+    def generate_pytest_cfg(self, test_config):
         """Generates pytest.ini with test options
         """
-        opts = self.tests[test_name]["addopts"].format(**self.tests[test_name]["params"])
+        opts = test_config["addopts"].format(**test_config["params"])
 
-        servers_per_group = self.tests[test_name]["test_env_cfg"]["servers"]["count_per_group"]
+        servers_per_group = test_config["test_env_cfg"]["servers"]["count_per_group"]
         groups_count = len(servers_per_group)
         servers_names = ansible_manager.get_host_names(self.instances_names['server'],
                                                        sum(servers_per_group))
-        server_name = (x for x in servers_names)
+        server_name = iter(servers_names)
         for g in xrange(groups_count):
             for i in xrange(servers_per_group[g]):
                 opts += ' --node={0}.i.fog.yandex.net:1025:{1}'.format(next(server_name), g + 1)
@@ -200,10 +186,10 @@ class TestRunner(object):
         pytest_config = ConfigParser.ConfigParser()
         pytest_config.add_section("pytest")
         pytest_config.set("pytest", "addopts", opts)
+
+        self.logger.info(opts)
         with open(os.path.join(self.tests_dir, "pytest.ini"), "w") as config_file:
             pytest_config.write(config_file)
-
-        self.logger.info((open(os.path.join(self.tests_dir, "pytest.ini"))).read())
 
     def setup(self, test_name):
         test = self.tests[test_name]
@@ -212,8 +198,8 @@ class TestRunner(object):
                                      self.get_inventory_path(test_name))
 
         # Check if it's a pytest test
-        if test.get("dir"):
-            self.generate_pytest_cfg(test_name)
+        if "dir" in test:
+            self.generate_pytest_cfg(test)
 
         cfg_info = "Test environment configuration:\n\tclients: {0}\n\tservers per group: {1}"
         self.logger.info(cfg_info.format(test["test_env_cfg"]["clients"]["count"],
@@ -282,13 +268,14 @@ class TestRunner(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument('--configs-dir', dest="configs_dir", required=True,
+                        help="directory with tests' configs")
     parser.add_argument('--testsuite-params', dest="testsuite_params", default=None,
                         help="path to file with parameters which will override default parameters for specified test suite.")
-    parser.add_argument('--tag', action="append", dest="tag",
+    parser.add_argument('--tag', action="append", dest="tags",
                         help="specifying which tests to run.")
-    parser.add_argument('--custom-instance-name', dest="custom_instance_name",
-                        help="specifying custom base name for the instances.")
-
+    parser.add_argument('--instance-name', dest="instance_name", default="elliptics",
+                        help="base name for the instances.")
     parser.add_argument('--verbose', '-v', action="store_true", dest="verbose",
                         help="increase verbosity")
     parser.add_argument('--teamcity', action="store_true", dest="teamcity",
@@ -304,12 +291,9 @@ if __name__ == "__main__":
     with teamcity_messages.block("LOGS: Collecting logs"):
         ansible_manager.run_playbook(testrunner.abspath("collect-logs"),
                                      testrunner.get_inventory_path("test-env-prepare"))
-        if args.teamcity:
-            path = "/tmp/logs-archive"
-            logs = []
-            for f in os.listdir(path):
-                logs.append(qa_storage_upload(os.path.join(path, f)))
 
     if args.teamcity:
         with teamcity_messages.block("LOGS: Links"):
-            print('\n'.join(logs))
+            path = "/tmp/logs-archive"
+            for f in os.listdir(path):
+                print(qa_storage_upload(os.path.join(path, f)))
