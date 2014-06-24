@@ -175,22 +175,11 @@ class TestRunner(object):
     def generate_pytest_cfg(self, test_config):
         """Generates pytest.ini with test options
         """
-        opts = test_config["addopts"].format(**test_config["params"])
-
-        servers_per_group = test_config["test_env_cfg"]["servers"]["count_per_group"]
-        groups_count = len(servers_per_group)
-        servers_names = ansible_manager.get_host_names(self.instances_names['server'],
-                                                       sum(servers_per_group))
-        server_name = iter(servers_names)
-        for g in xrange(groups_count):
-            for i in xrange(servers_per_group[g]):
-                opts += ' --node={0}.i.fog.yandex.net:1025:{1}'.format(next(server_name), g + 1)
-
         pytest_config = ConfigParser.ConfigParser()
         pytest_config.add_section("pytest")
-        pytest_config.set("pytest", "addopts", opts)
+        pytest_config.set("pytest", "addopts", test_config["addopts"])
 
-        self.logger.info(opts)
+        self.logger.info("Test running options: {0}".format(test_config["addopts"]))
         with open(os.path.join(self.tests_dir, "pytest.ini"), "w") as config_file:
             pytest_config.write(config_file)
 
