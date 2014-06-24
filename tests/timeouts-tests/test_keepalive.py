@@ -8,6 +8,7 @@ from hamcrest import assert_that, calling, raises
 
 from elliptics_testhelper import EllipticsTestHelper, nodes
 from utils import get_key_and_data
+from logging_tests import logger
 
 @pytest.fixture(scope='module')
 def client(pytestconfig, nodes):
@@ -75,7 +76,7 @@ def test_keepalive(client, key, unavailable_groups, available_groups):
                     raises(elliptics.TimeoutError))
 
     wait_time = 180
-    print("Waiting for {0} seconds to update client's routes list".format(wait_time))
+    logger.info("Waiting for {0} seconds to update client's routes list\n".format(wait_time))
     time.sleep(wait_time)
 
     for g in available_groups.keys():
