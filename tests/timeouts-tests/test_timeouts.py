@@ -2,8 +2,6 @@
 #
 import pytest
 import elliptics
-import subprocess
-import shlex
 import time
 import random
 import math
@@ -16,29 +14,14 @@ import utils
 from elliptics_testhelper import key_and_data, nodes
 from utils import MB
 
-class EllipticsTestHelper(et.EllipticsTestHelper):
-    @staticmethod
-    def set_networking_limitations(download=9216, upload=9216):
-        """ Sets download/upload bandwidth limitation (9 MBit by default)
-        """
-        cmd = "wondershaper eth0 {down} {up}".format(down=download, up=upload)
-        subprocess.call(shlex.split(cmd))
-
-    @staticmethod
-    def clear_networking_limitations():
-        """ Resets networking limitations
-        """
-        cmd = "wondershaper clear eth0"
-        subprocess.call(shlex.split(cmd))
-
 @pytest.fixture(scope='function')
 def client(pytestconfig, nodes):
     """Prepares elliptics session with custom timeouts."""
     wait_timeout = pytestconfig.option.wait_timeout
     check_timeout = pytestconfig.option.check_timeout
-    client = EllipticsTestHelper(nodes=nodes,
-                                 wait_timeout=wait_timeout,
-                                 check_timeout=check_timeout)
+    client = et.EllipticsTestHelper(nodes,
+                                    wait_timeout=wait_timeout,
+                                    check_timeout=check_timeout)
     return client
 
 @pytest.fixture(scope='function')
@@ -67,7 +50,7 @@ def test_wait_timeout(write_and_drop_node):
     DELAY = 3
     start_time = time.time()
     assert_that(calling(client.read_data_sync).with_args(key),
-                raises(elliptics.TimeoutError, EllipticsTestHelper.error_info.TimeoutError))
+                raises(elliptics.TimeoutError, et.EllipticsTestHelper.error_info.TimeoutError))
     exec_time = time.time() - start_time
 
     wait_timeout = client.get_timeout()
@@ -80,7 +63,7 @@ def write_with_quorum_check(request, client, key_and_data):
     and starts data writing
     """
     # Data size depends on WAIT_TIMEOUT and networking limitations
-    # (see EllipticsTestHelper.set_networking_limitations()).
+    # (see elliptics_testhelper.set_networking_limitations()).
     # Change this value depend on your network connection.
     size = 6*MB
 
@@ -89,11 +72,11 @@ def write_with_quorum_check(request, client, key_and_data):
 
     client.set_checker(elliptics.checkers.quorum)
 
-    client.set_networking_limitations()
+    et.set_networking_limitations()
     res = client.write_data(key, data)
 
     def teardown():
-        client.clear_networking_limitations()
+        et.clear_networking_limitations()
 
     request.addfinalizer(teardown)
     
@@ -156,7 +139,7 @@ def test_quorum_checker_negative(quorum_checker_negative):
     async_result = quorum_checker_negative
 
     assert_that(calling(async_result.get),
-                raises(elliptics.Error, EllipticsTestHelper.error_info.AddrNotExists))
+                raises(elliptics.Error, et.EllipticsTestHelper.error_info.AddrNotExists))
 
 @pytest.fixture(scope='function')
 def client_shuffling_off(pytestconfig, nodes):
@@ -167,10 +150,10 @@ def client_shuffling_off(pytestconfig, nodes):
     wait_timeout = pytestconfig.option.wait_timeout
     check_timeout = pytestconfig.option.check_timeout
 
-    client = EllipticsTestHelper(nodes=nodes,
-                                 wait_timeout=wait_timeout,
-                                 check_timeout=check_timeout,
-                                 config=config)
+    client = et.EllipticsTestHelper(nodes,
+                                    wait_timeout=wait_timeout,
+                                    check_timeout=check_timeout,
+                                    config=config)
 
     return client
 
