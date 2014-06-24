@@ -250,7 +250,7 @@ def test_keepalive(prepare_keepalive_check):
 
     for g in unavailable_groups.keys():
         assert_that(calling(client.read_data_from_groups_sync).with_args(key, [g]),
-                    calling(elliptics.TimeoutError))
+                    raises(elliptics.TimeoutError))
 
     wait_routes_list_update(client)
 
