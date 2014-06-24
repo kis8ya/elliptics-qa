@@ -206,11 +206,6 @@ def drop_groups(client, nodes, group_list):
 
     return groups_to_drop
 
-def wait_routes_list_update(client):
-    wait_time = 180
-    print("Waiting for {0} seconds to update client's routes list".format(wait_time))
-    time.sleep(wait_time)
-
 @pytest.fixture(scope='function')
 def prepare_keepalive_check(request, client, nodes, key_and_data):
     """Writes file and drops nodes from half groups
@@ -252,7 +247,9 @@ def test_keepalive(prepare_keepalive_check):
         assert_that(calling(client.read_data_from_groups_sync).with_args(key, [g]),
                     raises(elliptics.TimeoutError))
 
-    wait_routes_list_update(client)
+    wait_time = 180
+    print("Waiting for {0} seconds to update client's routes list".format(wait_time))
+    time.sleep(wait_time)
 
     for g in available_groups.keys():
         client.read_data_from_groups_sync(key, [g])
