@@ -207,12 +207,9 @@ def drop_groups(client, nodes, group_list):
     return groups_to_drop
 
 def wait_routes_list_update(client):
-    wait_time = 30
-    wait_count = 6
-    print("Waiting for {0} seconds to update client's routes list".format(wait_count * wait_time))
-    for i in xrange(wait_count):
-        time.sleep(wait_time)
-        print("After {0} seconds client's routes list looks like:\n{1}".format(wait_time * (i + 1), client.routes.addresses()))
+    wait_time = 180
+    print("Waiting for {0} seconds to update client's routes list".format(wait_time))
+    time.sleep(wait_time)
 
 @pytest.fixture(scope='function')
 def prepare_keepalive_check(request, client, nodes, key_and_data):
