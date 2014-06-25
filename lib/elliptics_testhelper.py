@@ -71,6 +71,16 @@ def user_flags():
     user_flags = random.randint(0, utils.USER_FLAGS_MAX)
     return user_flags
 
+def set_networking_limitations(download=9216, upload=9216):
+    """Sets download/upload bandwidth limitation (9 MBit by default)."""
+    cmd = "wondershaper eth0 {down} {up}".format(down=download, up=upload)
+    subprocess.call(shlex.split(cmd))
+
+def clear_networking_limitations():
+    """Clears networking limitations."""
+    cmd = "wondershaper clear eth0"
+    subprocess.call(shlex.split(cmd))
+
 class EllipticsTestHelper(elliptics.Session):
     """ This class extend elliptics.Session class with some useful (for tests) features
     """
