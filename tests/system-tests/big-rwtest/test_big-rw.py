@@ -8,10 +8,9 @@ import os
 
 from collections import defaultdict
 
-import elliptics_testhelper as et
-
-from elliptics_testhelper import nodes
-from utils import get_key_and_data, get_sha1
+import test_helper.elliptics_testhelper as et
+from test_helper.elliptics_testhelper import nodes
+from test_helper.utils import get_key_and_data, get_sha1
 
 @pytest.fixture(scope='module')
 def client(pytestconfig, nodes):

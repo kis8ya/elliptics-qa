@@ -6,11 +6,10 @@ import elliptics
 
 from hamcrest import assert_that, less_than_or_equal_to
 
-import elliptics_testhelper as et
-
-from utils import get_key_and_data, MB
-from elliptics_testhelper import nodes
-from logging_tests import logger
+import test_helper.elliptics_testhelper as et
+from test_helper.utils import get_key_and_data, MB
+from test_helper.elliptics_testhelper import nodes
+from test_helper.logging_tests import logger
 
 @pytest.fixture(scope='function')
 def client(pytestconfig, nodes):

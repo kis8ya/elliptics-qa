@@ -5,10 +5,11 @@ import elliptics
 
 from hamcrest import assert_that, equal_to, calling, raises, is_
 import sys
-import elliptics_testhelper as et
-from elliptics_testhelper import key_and_data, timestamp, user_flags, client, nodes
-import utils
-from matchers import elliptics_result_with
+
+import test_helper.elliptics_testhelper as et
+from test_helper.elliptics_testhelper import key_and_data, timestamp, user_flags, client, nodes
+import test_helper.utils as utils
+from test_helper.matchers import elliptics_result_with
 
 from testcases import size_type_list, offset_type_positive_list, offset_type_negative_list, \
     offset_and_size_types_positive_list, offset_and_size_types_negative_list

@@ -4,11 +4,10 @@ import itertools
 import elliptics
 
 from collections import defaultdict
-
-import elliptics_testhelper as et
-
-from elliptics_testhelper import nodes
 from hamcrest import assert_that, not_none, equal_to, has_length, greater_than
+
+import test_helper.elliptics_testhelper as et
+from test_helper.elliptics_testhelper import nodes
 
 # utility functions
 indexes_combinations_classes = {
