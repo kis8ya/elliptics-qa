@@ -2,11 +2,8 @@
 #
 import pytest
 import elliptics
-import subprocess
-import shlex
 import time
 import random
-import math
 
 from hamcrest import assert_that, calling, raises, less_than, greater_than, all_of
 
@@ -16,29 +13,14 @@ import utils
 from elliptics_testhelper import key_and_data, nodes
 from utils import MB
 
-class EllipticsTestHelper(et.EllipticsTestHelper):
-    @staticmethod
-    def set_networking_limitations(download=9216, upload=9216):
-        """ Sets download/upload bandwidth limitation (9 MBit by default)
-        """
-        cmd = "wondershaper eth0 {down} {up}".format(down=download, up=upload)
-        subprocess.call(shlex.split(cmd))
-
-    @staticmethod
-    def clear_networking_limitations():
-        """ Resets networking limitations
-        """
-        cmd = "wondershaper clear eth0"
-        subprocess.call(shlex.split(cmd))
-
 @pytest.fixture(scope='function')
 def client(pytestconfig, nodes):
     """Prepares elliptics session with custom timeouts."""
     wait_timeout = pytestconfig.option.wait_timeout
     check_timeout = pytestconfig.option.check_timeout
-    client = EllipticsTestHelper(nodes=nodes,
-                                 wait_timeout=wait_timeout,
-                                 check_timeout=check_timeout)
+    client = et.EllipticsTestHelper(nodes,
+                                    wait_timeout=wait_timeout,
+                                    check_timeout=check_timeout)
     return client
 
 @pytest.fixture(scope='function')
@@ -67,7 +49,7 @@ def test_wait_timeout(write_and_drop_node):
     DELAY = 3
     start_time = time.time()
     assert_that(calling(client.read_data_sync).with_args(key),
-                raises(elliptics.TimeoutError, EllipticsTestHelper.error_info.TimeoutError))
+                raises(elliptics.TimeoutError, et.EllipticsTestHelper.error_info.TimeoutError))
     exec_time = time.time() - start_time
 
     wait_timeout = client.get_timeout()
@@ -80,7 +62,7 @@ def write_with_quorum_check(request, client, key_and_data):
     and starts data writing
     """
     # Data size depends on WAIT_TIMEOUT and networking limitations
-    # (see EllipticsTestHelper.set_networking_limitations()).
+    # (see elliptics_testhelper.set_networking_limitations()).
     # Change this value depend on your network connection.
     size = 6*MB
 
@@ -89,11 +71,11 @@ def write_with_quorum_check(request, client, key_and_data):
 
     client.set_checker(elliptics.checkers.quorum)
 
-    client.set_networking_limitations()
+    et.set_networking_limitations()
     res = client.write_data(key, data)
 
     def teardown():
-        client.clear_networking_limitations()
+        et.clear_networking_limitations()
 
     request.addfinalizer(teardown)
     
@@ -101,11 +83,9 @@ def write_with_quorum_check(request, client, key_and_data):
 
 @pytest.fixture(scope='function')
 def quorum_checker_positive(request, nodes, write_with_quorum_check):
-    """ Chooses random nodes and drops them
-    (nodes_count = ceil(groups_count / 2) - 1)
-    """
+    """ Chooses random nodes (nodes quorum is absent) and drops them."""
     client, res = write_with_quorum_check
-    dnodes_count = len(nodes) >> 1 - (len(nodes) & 1 ^ 1)
+    dnodes_count = (len(nodes)-1) / 2
     dnodes = random.sample(nodes, dnodes_count)
 
     for node in dnodes:
@@ -130,11 +110,9 @@ def test_quorum_checker_positive(quorum_checker_positive):
 
 @pytest.fixture(scope='function')
 def quorum_checker_negative(request, nodes, write_with_quorum_check):
-    """ Chooses random nodes and drops it
-    (nodes_count = ceil(groups_count / 2))
-    """
+    """ Chooses random nodes (nodes quorum is present) and drops it."""
     client, res = write_with_quorum_check
-    dnodes_count = int(math.ceil(len(nodes) / 2.0))
+    dnodes_count = (len(nodes)+1) / 2
     dnodes = random.sample(nodes, dnodes_count)
     
     for node in dnodes:
@@ -156,7 +134,7 @@ def test_quorum_checker_negative(quorum_checker_negative):
     async_result = quorum_checker_negative
 
     assert_that(calling(async_result.get),
-                raises(elliptics.Error, EllipticsTestHelper.error_info.AddrNotExists))
+                raises(elliptics.Error, et.EllipticsTestHelper.error_info.AddrNotExists))
 
 @pytest.fixture(scope='function')
 def client_shuffling_off(pytestconfig, nodes):
@@ -167,10 +145,10 @@ def client_shuffling_off(pytestconfig, nodes):
     wait_timeout = pytestconfig.option.wait_timeout
     check_timeout = pytestconfig.option.check_timeout
 
-    client = EllipticsTestHelper(nodes=nodes,
-                                 wait_timeout=wait_timeout,
-                                 check_timeout=check_timeout,
-                                 config=config)
+    client = et.EllipticsTestHelper(nodes,
+                                    wait_timeout=wait_timeout,
+                                    check_timeout=check_timeout,
+                                    config=config)
 
     return client
 
@@ -212,77 +190,3 @@ def test_read_from_groups(write_and_shuffling_off):
     assert_that(all_of(exec_time, greater_than(wait_timeout),
                        exec_time, less_than(wait_timeout * 2)))
 
-#TODO: move this function to lib/utils.py
-def drop_groups(client, nodes, group_list):
-    groups_to_drop = {}
-    for g in group_list:
-        groups_to_drop[g] = [n for n in nodes if n.group == g]
-
-    for n in [i for v in groups_to_drop.values() for i in v]:
-        client.drop_node(n)
-
-    return groups_to_drop
-
-def wait_routes_list_update(client):
-    wait_time = 30
-    wait_count = 6
-    print("Waiting for {0} seconds to update client's routes list".format(wait_count * wait_time))
-    for i in xrange(wait_count):
-        time.sleep(wait_time)
-        print("After {0} seconds client's routes list looks like:\n{1}".format(wait_time * (i + 1), client.routes.addresses()))
-
-@pytest.fixture(scope='function')
-def prepare_keepalive_check(request, client, nodes, key_and_data):
-    """Writes file and drops nodes from half groups
-    """
-    key, data = key_and_data
-
-    client.write_data_sync(key, data)
-
-    # drop half groups
-    groups_count = len(client.groups)
-    groups_count_to_drop = int(math.ceil(groups_count / 2.0))
-    groups_to_drop = random.sample(client.groups, groups_count_to_drop)
-    dropped_groups = drop_groups(client, nodes, groups_to_drop)
-
-    available_groups = {}
-    ag = [g for g in client.groups if g not in dropped_groups.keys()]
-    for g in ag:
-        available_groups[g] = [n for n in nodes if n.group == g]
-
-    def fin():
-        client.resume_all_nodes()
-        time.sleep(60)
-
-    request.addfinalizer(fin)
-
-    return client, key, dropped_groups, available_groups
-
-@pytest.mark.keepalive
-def test_keepalive(prepare_keepalive_check):
-    """Testing that reading files from unavailable groups will raise the
-    elliptics.Error("...No such device or address: -6") after certain time of downtime
-    """
-    client, key, unavailable_groups, available_groups = prepare_keepalive_check
-
-    for g in available_groups.keys():
-        client.read_data_from_groups_sync(key, [g])
-
-    for g in unavailable_groups.keys():
-        assert_that(calling(client.read_data_from_groups_sync).with_args(key, [g]),
-                    calling(elliptics.TimeoutError))
-
-    wait_routes_list_update(client)
-
-    for g in available_groups.keys():
-        client.read_data_from_groups_sync(key, [g])
-
-    for g in unavailable_groups.keys():
-        assert_that(calling(client.read_data_from_groups_sync).with_args(key, [g]),
-                    raises(elliptics.Error, client.error_info.AddrNotExists))
-
-    client.resume_all_nodes()
-    time.sleep(60)
-
-    for g in client.groups:
-        client.read_data_from_groups_sync(key, [g])
