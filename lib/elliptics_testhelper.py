@@ -84,15 +84,6 @@ def clear_networking_limitations():
 class EllipticsTestHelper(elliptics.Session):
     """ This class extend elliptics.Session class with some useful (for tests) features
     """
-    class Node(object):
-        def __init__(self, host, port, group):
-            self.host = host
-            self.port = int(port)
-            self.group = int(group)
-
-        def __repr__(self):
-            return "Node({0}, {1}, {2})".format(self.host, self.port, self.group)
-
     error_info = type("Errors", (), {
             'WrongArguments': "Argument list too long",
             'NotExists': "No such file or directory",
@@ -146,7 +137,7 @@ class EllipticsTestHelper(elliptics.Session):
         """ Returns list of nodes from command line arguments
         (option '--node')
         """
-        return [EllipticsTestHelper.Node(*n.split(':')) for n in args]
+        return [utils.Node(*n.split(':')) for n in args]
 
     def drop_node(self, node):
         """ Makes a node unavailable for elliptics requests

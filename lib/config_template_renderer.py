@@ -12,7 +12,7 @@ import copy
 from jinja2 import Environment, FileSystemLoader
 
 import ansible_manager
-from elliptics_testhelper import EllipticsTestHelper
+from utils import Node
 
 class Client(object):
     """Clients object for testing needs."""
@@ -45,7 +45,7 @@ def _get_servers(servers_per_group, instances_names):
     for group in xrange(len(servers_per_group)):
         for i in xrange(servers_per_group[group]):
             host = _hostname_template.format(next(server_name))
-            servers.append(EllipticsTestHelper.Node(host, server_port, group+1))
+            servers.append(Node(host, server_port, group+1))
 
     return servers
 

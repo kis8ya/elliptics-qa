@@ -37,3 +37,12 @@ def get_key_and_data_list(list_size=3):
     key = get_sha1(''.join(data_list))
 
     return key, data_list
+
+class Node(object):
+    def __init__(self, host, port, group):
+        self.host = host
+        self.port = int(port)
+        self.group = int(group)
+
+    def __repr__(self):
+        return "Node({0}, {1}, {2})".format(self.host, self.port, self.group)
