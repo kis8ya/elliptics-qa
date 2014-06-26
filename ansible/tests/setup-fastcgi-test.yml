@@ -8,8 +8,10 @@
       with_items:
         - fastcgi-daemon2
         - libfastcgi2-syslog
-        - elliptics-fastcgi=2.0.22~ell25
         - nginx
+
+    - name: Install elliptics-fastcgi
+      shell: sudo apt-get install elliptics-fastcgi=*~ell25
 
     - name: Create tmp directory
       file: path={{ item }} state=directory
@@ -24,7 +26,22 @@
       template: src=templates/fastcgi_config.xml dest={{ fastcgi_config_path }}
 
     - name: Start nginx
-      shell: nginx
+      shell: service nginx restart
+
+    - name: Get fastcgi-daemon status
+      shell: >
+        start-stop-daemon
+        --name={{ fastcgi_daemon_name }}
+        --status
+      ignore_errors: yes
+      register: fastcgi_daemon_running
+
+    - name: Stop fastcgi-daemon status
+      shell: >
+        start-stop-daemon
+        --name={{ fastcgi_daemon_name }}
+        --stop
+      when: fastcgi_daemon_running|success
 
     - name: Start fastcgi-daemon
       shell: >
@@ -33,3 +50,9 @@
         --background
         --exec=/usr/sbin/fastcgi-daemon2
         --start -- --config={{ fastcgi_config_path }}
+
+    - name: Ensure fastcgi-daemon is running
+      shell: >
+        start-stop-daemon
+        --name={{ fastcgi_daemon_name }}
+        --status
