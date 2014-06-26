@@ -20,10 +20,10 @@
         - "{{ fastcgi_tmp_dir }}"
 
     - name: Prepare nginx config
-      template: src=templates/nginx.conf dest=/etc/nginx/nginx.conf
+      template: src=templates/nginx.conf.j2 dest=/etc/nginx/nginx.conf
 
     - name: Prepare fastcgi-daemon config
-      template: src=templates/fastcgi_config.xml dest={{ fastcgi_config_path }}
+      template: src=templates/fastcgi_config.xml.j2 dest={{ fastcgi_config_path }}
 
     - name: Start nginx
       shell: service nginx restart
