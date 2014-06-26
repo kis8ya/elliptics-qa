@@ -83,7 +83,7 @@ def ids(pytestconfig, client):
             ids[key_id] = dict(zip(indexes_ids, key_index_data_list))
 
         for r in async_results:
-            r.get()
+            r.wait()
 
     return ids
 
