@@ -39,7 +39,7 @@ def run_playbook(playbook, inventory=None):
 
 def generate_inventory_file(inventory_path, clients_count, servers_per_group,
                             groups, instances_names):
-    inventory_host_record_template = '{0}.i.fog.yandex.net ansible_ssh_user=root'
+    inventory_host_record_template = '{0}.i.fog.yandex.net'
     servers_group_template = 'servers-{0}'
 
     groups_count = len(servers_per_group)
