@@ -1,3 +1,5 @@
+import random
+
 from hamcrest.core.base_matcher import BaseMatcher
 from hamcrest.core.helpers.hasmethod import hasmethod
 from hamcrest import has_properties, has_property, equal_to, greater_than_or_equal_to
