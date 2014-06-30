@@ -36,7 +36,7 @@
       ignore_errors: yes
       register: fastcgi_daemon_running
 
-    - name: Stop fastcgi-daemon status
+    - name: Stop fastcgi-daemon
       shell: >
         start-stop-daemon
         --name={{ fastcgi_daemon_name }}
