@@ -207,7 +207,7 @@ class TestRunner(object):
         # or we can create separted directory for files which is needed for tests.
         files_to_sync = ["elliptics_testhelper.py", "utils.py", "logging_tests.py",
                          "logger.ini", "matchers.py"]
-        rsyncdir_opts = "--rsyncdir tests/{0}/".format(self.tests[test_name]["dir"])
+        rsyncdir_opts = "--rsyncdir tests/"
         for f in files_to_sync:
             rsyncdir_opts += " --rsyncdir lib/{0}".format(f)
 
