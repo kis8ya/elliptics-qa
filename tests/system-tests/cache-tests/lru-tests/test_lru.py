@@ -2,41 +2,11 @@ import pytest
 import time
 import random
 
-import elliptics
-
 from hamcrest import assert_that, less_than_or_equal_to
 
-import elliptics_testhelper as et
-
 from utils import get_key_and_data, MB
-from elliptics_testhelper import nodes
 from logging_tests import logger
 
-@pytest.fixture(scope='function')
-def client(pytestconfig, nodes):
-    """Prepares elliptics.Session object with elliptics.io_flags.cache."""
-    client = et.EllipticsTestHelper(nodes=nodes)
-    client.set_ioflags(elliptics.io_flags.cache)
-    return client
-
-def test_cache_overhead(client):
-    """Testing that elliptics will process commands just in time
-    when there is a cache overhead.
-    """
-    count = 100000
-    logger.info("\n0/{0}".format(count))
-    for i in xrange(count):
-        key = str(i)
-        try:
-            # check that command will not raise elliptics.TimeoutError
-            client.write_data_sync(key, '?')
-        except elliptics.TimeoutError as e:
-            assert e is None, e
-        logger.info('\r{0}/{1}'.format(i + 1, count))
-
-@pytest.fixture
-def requests_number(pytestconfig):
-    return pytestconfig.option.requests_number
 
 def time_requests(client, requests_count, hot_keys, cold_keys):
     """Returns time which was spent to process numerous requests."""
@@ -54,10 +24,13 @@ def time_requests(client, requests_count, hot_keys, cold_keys):
 
     return result_time
 
-def test_cache_lru(client, requests_number):
+
+def test_cache_lru(pytestconfig, client):
     """Testing that data requests will take not too much more time
     after stuffing cache with unused data.
     """
+    requests_number = pytestconfig.option.requests_number
+    allowed_time_diff_rate = pytestconfig.option.allowed_time_diff_rate
     hot_keys_count = 5000
     cold_keys_count = 45000
     hot_keys = map(str, xrange(hot_keys_count))
@@ -75,5 +48,5 @@ def test_cache_lru(client, requests_number):
     time_after = time_requests(client, requests_number, hot_keys, cold_keys)
 
     diff_time = time_after - time_before
-    allowed_overhead_time = time_before * 0.2
+    allowed_overhead_time = time_before * allowed_time_diff_rate
     assert_that(diff_time, less_than_or_equal_to(allowed_overhead_time))
