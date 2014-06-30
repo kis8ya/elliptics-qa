@@ -12,16 +12,7 @@ import copy
 from jinja2 import Environment, FileSystemLoader
 
 import ansible_manager
-from utils import Node
-
-class Client(object):
-    """Clients object for testing needs."""
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-
-    def __repr__(self):
-        return "Client({host}, {port})".format(**self.__dict__)
+from test_helper.utils import Node, Client
 
 _hostname_template = "{0}.i.fog.yandex.net"
 

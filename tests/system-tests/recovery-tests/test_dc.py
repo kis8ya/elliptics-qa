@@ -9,11 +9,12 @@ from hamcrest import assert_that, raises, calling, equal_to
 
 import elliptics
 
-import elliptics_testhelper as et
+import test_helper.elliptics_testhelper as et
+from test_helper.elliptics_testhelper import nodes
+from test_helper.utils import MB, get_key_and_data
+from test_helper.matchers import hasitems
+from test_helper.logging_tests import logger
 
-from elliptics_testhelper import nodes
-from matchers import hasitems
-from logging_tests import logger
 from conftest import RingPartitioning, key_and_data, wait_routes_list_update
 
 def drop_groups(client, nodes, group_list):

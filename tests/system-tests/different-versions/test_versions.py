@@ -4,9 +4,8 @@ import elliptics
 
 from hamcrest import assert_that, has_item, calling, raises
 
-import elliptics_testhelper as et
-
-from logging_tests import logger
+import test_helper.elliptics_testhelper as et
+from test_helper.logging_tests import logger
 
 def is_odd_node(node):
     """Checks if node has odd number"""

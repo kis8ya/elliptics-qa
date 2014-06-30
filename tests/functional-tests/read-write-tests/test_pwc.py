@@ -6,10 +6,10 @@ import elliptics
 
 from hamcrest import assert_that, equal_to, calling, raises, has_property, has_length, is_
 
-import elliptics_testhelper as et
-from elliptics_testhelper import key_and_data, timestamp, user_flags, client, nodes
-import utils
-from matchers import elliptics_result_with
+import test_helper.elliptics_testhelper as et
+import test_helper.utils as utils
+from test_helper.elliptics_testhelper import key_and_data, timestamp, user_flags, client, nodes
+from test_helper.matchers import elliptics_result_with
 
 def get_length(data):
     return sum(len(i) for i in data)

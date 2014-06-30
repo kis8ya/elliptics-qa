@@ -49,7 +49,7 @@ def setup_loggers(teamcity, verbose):
     runner_logger.setLevel(runner_logging_level)
     runner_logger.addHandler(handler)
 
-    conf_file = 'lib/logger.ini'
+    conf_file = 'lib/test_helper/logger.ini'
     parser = ConfigParser.ConfigParser()
     parser.read([conf_file])
 
@@ -202,15 +202,7 @@ class TestRunner(object):
                                      self.get_inventory_path(test_name))
 
     def run_pytest_test(self, test_name):
-        #TODO: remove this list of files
-        # It can be replaced with copying all files from lib
-        # or we can create separted directory for files which is needed for tests.
-        files_to_sync = ["elliptics_testhelper.py", "utils.py", "logging_tests.py",
-                         "logger.ini", "matchers.py"]
-        rsyncdir_opts = "--rsyncdir tests/"
-        for f in files_to_sync:
-            rsyncdir_opts += " --rsyncdir lib/{0}".format(f)
-
+        rsyncdir_opts = "--rsyncdir tests/ --rsyncdir lib/test_helper"
         clients_names = ansible_manager.get_host_names(self.instances_names["client"],
                                                        self.tests[test_name]["test_env_cfg"]["clients"]["count"])
         for client_name in clients_names:

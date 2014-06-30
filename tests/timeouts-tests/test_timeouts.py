@@ -7,11 +7,10 @@ import random
 
 from hamcrest import assert_that, calling, raises, less_than, greater_than, all_of
 
-import elliptics_testhelper as et
-import utils
-
-from elliptics_testhelper import key_and_data, nodes
-from utils import MB
+import test_helper.elliptics_testhelper as et
+import test_helper.utils as utils
+from test_helper.elliptics_testhelper import key_and_data, nodes
+from test_helper.utils import MB
 
 @pytest.fixture(scope='function')
 def client(pytestconfig, nodes):

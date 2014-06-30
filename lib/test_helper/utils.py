@@ -38,6 +38,15 @@ def get_key_and_data_list(list_size=3):
 
     return key, data_list
 
+class Client(object):
+    """Clients object for testing needs."""
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+
+    def __repr__(self):
+        return "Client({host}, {port})".format(**self.__dict__)
+
 class Node(object):
     def __init__(self, host, port, group):
         self.host = host

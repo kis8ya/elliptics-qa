@@ -7,11 +7,10 @@ import elliptics
 from collections import defaultdict
 from hamcrest import assert_that, raises, calling, equal_to
 
-import elliptics_testhelper as et
-
-from elliptics_testhelper import nodes
-from utils import MB
-from logging_tests import logger
+import test_helper.elliptics_testhelper as et
+from test_helper.elliptics_testhelper import nodes
+from test_helper.utils import MB
+from test_helper.logging_tests import logger
 from conftest import RingPartitioning, key_and_data, wait_routes_list_update
 
 def drop_nodes(client, nodes, number):

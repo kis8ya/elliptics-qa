@@ -2,9 +2,8 @@ import pytest
 import time
 import socket
 
-import elliptics_testhelper as et
-
-from utils import get_key_and_data
+import test_helper.elliptics_testhelper as et
+from test_helper.utils import get_key_and_data
 
 def key_and_data(files_size):
     """Returns key-data pair."""

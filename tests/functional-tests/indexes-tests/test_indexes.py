@@ -16,10 +16,11 @@ import random
 import itertools
 import elliptics
 
-import elliptics_testhelper as et
+import test_helper.elliptics_testhelper as et
 
-from elliptics_testhelper import nodes
+from test_helper.elliptics_testhelper import nodes
 from hamcrest import assert_that, not_none, equal_to, has_length, greater_than
+
 
 indexes_combinations_classes = {
     "SINGLE": lambda seq: random.sample(seq, 1),

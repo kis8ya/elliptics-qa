@@ -5,9 +5,9 @@ import elliptics
 
 from hamcrest import assert_that, calling, raises
 
-from elliptics_testhelper import EllipticsTestHelper, nodes
-from utils import get_key_and_data
-from logging_tests import logger
+from test_helper.elliptics_testhelper import EllipticsTestHelper, nodes
+from test_helper.utils import get_key_and_data
+from test_helper.logging_tests import logger
 
 @pytest.fixture(scope='module')
 def client(pytestconfig, nodes):

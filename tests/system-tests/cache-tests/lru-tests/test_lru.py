@@ -4,8 +4,8 @@ import random
 
 from hamcrest import assert_that, less_than_or_equal_to
 
-from utils import get_key_and_data, MB
-from logging_tests import logger
+from test_helper.utils import get_key_and_data, MB
+from test_helper.logging_tests import logger
 
 
 def time_requests(client, requests_count, hot_keys, cold_keys):

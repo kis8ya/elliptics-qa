@@ -1,6 +1,7 @@
 import elliptics
 
-from logging_tests import logger
+from test_helper.logging_tests import logger
+
 
 def test_cache_overhead(client):
     """Testing that elliptics will process commands just in time

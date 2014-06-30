@@ -1,0 +1,10 @@
+---
+- hosts: clients
+  tasks:
+    - name: Stop nginx
+      shell: nginx -s stop
+
+    - name: Stop fastcgi-daemon
+      shell: start-stop-daemon --name={{ fastcgi_daemon_name }} --stop
+
+- include: ../elliptics-stop.yml

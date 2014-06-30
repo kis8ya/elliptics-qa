@@ -25,3 +25,9 @@ grape_src: /tmp/grape
 
 remote_packages_dir: /root/pkgs
 remote_repo_dir: /root/elliptics-qa
+
+# fastcgi parameters
+fastcgi_log_dir: /tmp/log
+fastcgi_tmp_dir: /tmp/fastcgi
+fastcgi_config_path: /root/fastcgi_config.xml
+fastcgi_daemon_name: fastcgi-daemon2
