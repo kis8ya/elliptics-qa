@@ -202,9 +202,7 @@ class TestRunner(object):
                                      self.get_inventory_path(test_name))
 
     def run_pytest_test(self, test_name):
-        rsyncdir_opts = "--rsyncdir tests/{0}/ --rsyncdir lib/test_helper".format(
-            self.tests[test_name]["dir"])
-
+        rsyncdir_opts = "--rsyncdir tests/ --rsyncdir lib/test_helper"
         clients_names = ansible_manager.get_host_names(self.instances_names["client"],
                                                        self.tests[test_name]["test_env_cfg"]["clients"]["count"])
         for client_name in clients_names:
