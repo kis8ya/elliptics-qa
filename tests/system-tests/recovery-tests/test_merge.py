@@ -69,7 +69,7 @@ def write_data_when_dropped(client, nodes, files_number, files_size, nodes_numbe
         client.resume_node(n)
     wait_routes_list_update(client)
 
-    return good_keys, bad_keys, dropped_nodes
+    return good_keys, bad_keys, dropped_nodes, new_ring_partitioning
 
 @pytest.fixture(scope='function')
 def write_data_when_two_dropped(request, client, nodes, files_number, files_size):
@@ -89,8 +89,9 @@ def test_one_node_option(client, nodes, write_data_when_two_dropped):
     (even this node was dropped and has no keys to recover)
     when there were 2 dropped nodes
     """
-    good_keys, bad_keys, dropped_nodes = write_data_when_two_dropped
+    good_keys, bad_keys, dropped_nodes, dropped_ring_partitioning = write_data_when_two_dropped
     ring_partitioning = RingPartitioning(client, nodes)
+    available_nodes = [n for n in nodes if n not in dropped_nodes]
 
     # check that "good" keys are accessible
     for key_list in good_keys.values():
@@ -106,11 +107,10 @@ def test_one_node_option(client, nodes, write_data_when_two_dropped):
     # Run dnet_recovery --one-node merge for nodes with keys to recover
     bad_key_list = [i for v in bad_keys.values() for i in v]
     recovered_keys = []
-    for node in dropped_nodes:
+    for node in available_nodes:
         cmd = ["dnet_recovery",
-               "--remote", "{0}:{1}:2".format(node.host, node.port),
                "--groups", ','.join(map(str, client.groups)),
-               "--one-node",
+               "--one-node", "{0}:{1}:2".format(node.host, node.port),
                "merge"]
 
         logger.info("{0}\n".format(cmd))
@@ -119,7 +119,7 @@ def test_one_node_option(client, nodes, write_data_when_two_dropped):
         key_list = []
         for k in bad_key_list:
             elliptics_id = client.transform(k)
-            if ring_partitioning.is_my_id(node.host, elliptics_id):
+            if dropped_ring_partitioning.is_my_id(node.host, elliptics_id):
                 key_list.append(k)
                 bad_key_list.remove(k)
 
