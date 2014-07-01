@@ -38,8 +38,9 @@ def run_playbook(playbook, inventory=None):
             raise RuntimeError("Playbook {0} failed (exit code: {1})".format(playbook, p.returncode))
 
 def generate_inventory_file(inventory_path, clients_count, servers_per_group,
-                            groups, instances_names):
-    inventory_host_record_template = '{0}.i.fog.yandex.net ansible_ssh_user=root'
+                            groups, instances_names, os_hostname_prefix):
+    #TODO: move working with os_hostname_prefix parameter to openstack module
+    inventory_host_record_template = '{0}{1} ansible_ssh_user=root'
     servers_group_template = 'servers-{0}'
 
     groups_count = len(servers_per_group)
@@ -50,7 +51,7 @@ def generate_inventory_file(inventory_path, clients_count, servers_per_group,
     # Add elliptics clients
     inventory.add_section(groups["clients"])
     for i in get_host_names(instance_name=instances_names['client'], count=clients_count):
-        host_record = inventory_host_record_template.format(i)
+        host_record = inventory_host_record_template.format(i, os_hostname_prefix)
         inventory.set(groups["clients"], host_record)
     # Add alias for clients' group (to use it in playbooks)
     clients_general_group = _as_group_of_groups('clients')
@@ -65,7 +66,8 @@ def generate_inventory_file(inventory_path, clients_count, servers_per_group,
         group_name = servers_group_template.format(g + 1)
         inventory.add_section(group_name)
         for i in xrange(servers_per_group[g]):
-            host_record = inventory_host_record_template.format(next(server_name))
+            host_record = inventory_host_record_template.format(next(server_name),
+                                                                os_hostname_prefix)
             inventory.set(group_name, host_record)
 
     # Group all servers' groups in associated group

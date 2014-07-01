@@ -12,13 +12,18 @@ from functools import wraps
 
 os_login = os.environ.get('OS_USERNAME', None)
 os_password = os.environ.get('OS_PASSWORD', None)
-os_url = os.environ.get('OS_URL', None)
 os_tenant_name = os.environ.get('OS_TENANT_NAME', None)
+os_region_name = os.environ.get('OS_REGION_NAME', None)
+if os_region_name == "Yandex-Search-SAS1":
+    compute_endpoint = "https://compute-sas1.fog.yandex-team.ru"
+elif os_region_name == "Yandex-Search-FOLB":
+    compute_endpoint = "https://compute-folb.fog.yandex-team.ru"
+os_hostname_prefix = os.environ.get('OS_HOSTNAME_PREFIX', None)
 
 TIMEOUT = 60
 
 ENDPOINTS_INFO = {"COMPUTE": {'port': 443,
-                              'host': "https://compute-sas1.fog.yandex-team.ru",
+                              'host': compute_endpoint,
                               'uri': {"IMAGES": 'v2/{tenant_id}/images',
                                       "FLAVORS": 'v2/{tenant_id}/flavors/detail',
                                       "NETWORKS": 'v2/{tenant_id}/os-networks',
@@ -67,7 +72,14 @@ def wait_till_active(session, instances):
         if instance_info['status'] == "ACTIVE":
             # get ip address
             network_name = instance_info['addresses'].keys()[0]
-            hosts_ip[instance+'.i.fog.yandex.net'] = instance_info['addresses'][network_name][0]['addr']
+            for address in instance_info['addresses'][network_name]:
+                if address['version'] == 4:
+                    ip = address['addr']
+                    break
+            else:
+                ip = None
+            iname = instance + os_hostname_prefix
+            hosts_ip[iname] = ip
             continue
         queue.appendleft(instance)
     return hosts_ip

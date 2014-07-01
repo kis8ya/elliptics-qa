@@ -79,6 +79,8 @@ class TestRunner(object):
                                 'server': "{0}-server".format(args.instance_name)}
         self.tests = self.collect_tests(args.tags)
         self.instances_params = self.collect_instances_params()
+        #TODO: move working with this parameter to openstack module
+        self.os_hostname_prefix = os.environ.get("OS_HOSTNAME_PREFIX", None)
 
         self.prepare_base_environment()
 
@@ -135,7 +137,8 @@ class TestRunner(object):
                                                     clients_count=cfg["test_env_cfg"]["clients"]["count"],
                                                     servers_per_group=cfg["test_env_cfg"]["servers"]["count_per_group"],
                                                     groups=groups,
-                                                    instances_names=self.instances_names)
+                                                    instances_names=self.instances_names,
+                                                    os_hostname_prefix=self.os_hostname_prefix)
 
             params = cfg["params"]
             if name in self.testsuite_params:
@@ -154,7 +157,8 @@ class TestRunner(object):
                                                 clients_count=self.instances_params["clients"]["count"],
                                                 servers_per_group=[self.instances_params["servers"]["count"]],
                                                 groups=groups,
-                                                instances_names=self.instances_names)
+                                                instances_names=self.instances_names,
+                                                os_hostname_prefix=self.os_hostname_prefix)
 
         ansible_manager.run_playbook(self.abspath(base_setup_playbook),
                                      inventory_path)
@@ -180,7 +184,7 @@ class TestRunner(object):
         pytest_config.set("pytest", "addopts", test_config["addopts"])
 
         self.logger.info("Test running options: {0}".format(test_config["addopts"]))
-        with open(os.path.join(self.tests_dir, "pytest.ini"), "w") as config_file:
+        with open("pytest.ini", "w") as config_file:
             pytest_config.write(config_file)
 
     def setup(self, test_name):
@@ -210,9 +214,10 @@ class TestRunner(object):
                 opts = '--teamcity'
             else:
                 opts = ''
-            opts += ' -d --tx ssh="{0}.i.fog.yandex.net -l root -q" {1} tests/{2}/'
+            opts += ' -d --tx ssh="{0}{1} -l root -q" {2} tests/{3}/'
 
             opts = opts.format(client_name,
+                               self.os_hostname_prefix,
                                rsyncdir_opts,
                                self.tests[test_name]["dir"])
             self.logger.info(opts)

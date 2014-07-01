@@ -8,13 +8,15 @@ any variable from **params** test config's section.
 
 import json
 import copy
+import os
 
 from jinja2 import Environment, FileSystemLoader
 
 import ansible_manager
 from test_helper.utils import Node, Client
 
-_hostname_template = "{0}.i.fog.yandex.net"
+os_hostname_prefix = os.environ.get('OS_HOSTNAME_PREFIX', None)
+_hostname_template = "{0}" + os_hostname_prefix
 
 def _get_clients(clients_count, instances_names):
     client_port = 1083
