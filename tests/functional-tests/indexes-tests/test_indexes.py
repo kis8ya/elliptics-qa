@@ -3,11 +3,11 @@
 These tests check that commands `list_indexes`, `find_all_indexes` and `find_any_indexes`
 will return correct results after each of the following changes in indexes:
 
-1. Basic setting indexes (`set_indexes` method).
-2. Changing indexes (`set_indexes` method).
-3. Updating indexes (`update_indexes` method).
-4. Removing indexes (`remove_indexes` method).
-5. Internal updating indexes (`update_indexes_internal` method).
+1. Basic setting indexes (`set_indexes` command).
+2. Changing indexes (`set_indexes` command).
+3. Updating indexes (`update_indexes` command).
+4. Removing indexes (`remove_indexes` command).
+5. Internal updating indexes (`update_indexes_internal` command).
 
 """
 
@@ -60,7 +60,7 @@ def indexes(indexes_count):
 
 @pytest.fixture(scope='function', params=indexes_combinations_classes.keys())
 def index_list(request, indexes):
-    """Prepares test cases for testing `find_all_indexes` and `find_any_indexes` methods."""
+    """Prepares test cases for testing `find_all_indexes` and `find_any_indexes` commands."""
     sample_cases = indexes_combinations_classes[request.param]
     return sample_cases(indexes)
 
@@ -215,7 +215,7 @@ def updated_ids(pytestconfig, client, ids, indexes, indexes_count):
 def internal_updated_ids(pytestconfig, client, ids, indexes, indexes_count):
     """Prepares data for the tests after internal updating indexes (4).
 
-    Updates indexes (with `update_indexes_internal` method) for randomly chosen keys
+    Updates indexes (with `update_indexes_internal` command) for randomly chosen keys
     and returns dictionary only with updated data.
 
     """
@@ -280,7 +280,7 @@ def removed_ids(pytestconfig, client, ids):
 
 
 def check_find_all_indexes(index_list, client, ids):
-    """Checks `find_all_indexes` method.
+    """Checks `find_all_indexes` command.
 
     Gets result from `find_all_indexes` and checks that it matches to given dictionary **ids**.
 
@@ -310,7 +310,7 @@ def check_find_all_indexes(index_list, client, ids):
 
 
 def check_find_any_indexes(index_list, client, ids):
-    """Checks `find_any_indexes` method.
+    """Checks `find_any_indexes` command.
 
     Gets result from `find_any_indexes` and checks that it matches to given dictionary **ids**.
 
@@ -341,7 +341,7 @@ def check_find_any_indexes(index_list, client, ids):
 
 
 def check_list_indexes(client, ids):
-    """Checks `list_indexes` method.
+    """Checks `list_indexes` command.
 
     Gets result from `list_indexes` for the each key
     and checks that it matches to given dictionary **ids**.
@@ -359,75 +359,75 @@ def check_list_indexes(client, ids):
 
 
 def test_list_indexes(client, ids):
-    """Checks `list_indexes` method after basic setting indexes (1)."""
+    """Checks `list_indexes` command after basic setting indexes (1)."""
     check_list_indexes(client, ids)
 
 
 def test_find_all_indexes(index_list, client, ids):
-    """Checks `find_all_indexes` method after basic setting indexes (1)."""
+    """Checks `find_all_indexes` command after basic setting indexes (1)."""
     check_find_all_indexes(index_list, client, ids)
 
 
 def test_find_any_indexes(index_list, client, ids):
-    """Checks `find_any_indexes` method after basic setting indexes (1)."""
+    """Checks `find_any_indexes` command after basic setting indexes (1)."""
     check_find_any_indexes(index_list, client, ids)
 
 
 def test_list_indexes_after_change(client, changed_ids):
-    """Checks `list_indexes` method after changing indexes (2)."""
+    """Checks `list_indexes` command after changing indexes (2)."""
     check_list_indexes(client, changed_ids)
 
 
 def test_find_all_indexes_after_change(index_list, client, ids):
-    """Checks `find_all_indexes` method after changing indexes (2)."""
+    """Checks `find_all_indexes` command after changing indexes (2)."""
     check_find_all_indexes(index_list, client, ids)
 
 
 def test_find_any_indexes_after_change(index_list, client, ids):
-    """Checks `find_any_indexes` method after changing indexes (2)."""
+    """Checks `find_any_indexes` command after changing indexes (2)."""
     check_find_any_indexes(index_list, client, ids)
 
 
 def test_list_indexes_after_update(client, updated_ids):
-    """Checks `list_indexes` method after updating indexes (3)."""
+    """Checks `list_indexes` command after updating indexes (3)."""
     check_list_indexes(client, updated_ids)
 
 
 def test_find_all_indexes_after_update(index_list, client, ids):
-    """Checks `find_all_indexes` method after updating indexes (3)."""
+    """Checks `find_all_indexes` command after updating indexes (3)."""
     check_find_all_indexes(index_list, client, ids)
 
 
 def test_find_any_indexes_after_update(index_list, client, ids):
-    """Checks `find_any_indexes` method after updating indexes (3)."""
+    """Checks `find_any_indexes` command after updating indexes (3)."""
     check_find_any_indexes(index_list, client, ids)
 
 
 def test_list_indexes_after_remove(client, removed_ids):
-    """Checks `list_indexes` method after removing indexes (4)."""
+    """Checks `list_indexes` command after removing indexes (4)."""
     check_list_indexes(client, removed_ids)
 
 
 def test_find_all_indexes_after_remove(index_list, client, ids):
-    """Checks `find_all_indexes` method after removing indexes (4)."""
+    """Checks `find_all_indexes` command after removing indexes (4)."""
     check_find_all_indexes(index_list, client, ids)
 
 
 def test_find_any_indexes_after_remove(index_list, client, ids):
-    """Checks `find_any_indexes` method after removing indexes (4)."""
+    """Checks `find_any_indexes` command after removing indexes (4)."""
     check_find_any_indexes(index_list, client, ids)
 
 
 def test_list_indexes_after_internal_update(client, internal_updated_ids):
-    """Checks `list_indexes` method after internal updating indexes (5)."""
+    """Checks `list_indexes` command after internal updating indexes (5)."""
     check_list_indexes(client, internal_updated_ids)
 
 
 def test_find_all_indexes_after_internal_update(index_list, client, ids):
-    """Checks `find_all_indexes` method after internal updating indexes (5)."""
+    """Checks `find_all_indexes` command after internal updating indexes (5)."""
     check_find_all_indexes(index_list, client, ids)
 
 
 def test_find_any_indexes_after_internal_update(index_list, client, ids):
-    """Checks `find_any_indexes` method after internal updating indexes (5)."""
+    """Checks `find_any_indexes` command after internal updating indexes (5)."""
     check_find_any_indexes(index_list, client, ids)
