@@ -123,7 +123,8 @@ def test_one_node_dc_with_indexes(client, nodes, write_indexes_when_groups_dropp
                "--groups", ','.join(map(str, client.groups)),
                "dc"]
         logger.info("{0}\n".format(cmd))
-        subprocess.call(cmd)
+        retcode = subprocess.call(cmd)
+        assert retcode == 0, "{0} retcode = {1}".format(cmd, retcode)
 
         for k, v in bad_keys.items():
             elliptics_id = client.transform(k)
@@ -187,7 +188,8 @@ def test_dc_with_indexes(client, nodes, write_indexes_when_groups_dropped):
            "--groups", ','.join(map(str, client.groups)),
            "dc"]
     logger.info("{0}\n".format(cmd))
-    subprocess.call(cmd)
+    retcode = subprocess.call(cmd)
+    assert retcode == 0, "{0} retcode = {1}".format(cmd, retcode)
 
     for k, v in bad_keys.items():
         good_keys[k].extend(v)
@@ -238,7 +240,8 @@ def test_nprocess_dc_with_indexes(client, nodes, write_indexes_when_groups_dropp
            "--groups", ','.join(map(str, client.groups)),
            "dc"]
     logger.info("{0}\n".format(cmd))
-    subprocess.call(cmd)
+    retcode = subprocess.call(cmd)
+    assert retcode == 0, "{0} retcode = {1}".format(cmd, retcode)
 
     for k, v in bad_keys.items():
         good_keys[k].extend(v)

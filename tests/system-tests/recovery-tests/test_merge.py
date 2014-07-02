@@ -114,7 +114,8 @@ def test_one_node_option(client, nodes, write_data_when_two_dropped):
                "merge"]
 
         logger.info("{0}\n".format(cmd))
-        subprocess.call(cmd)
+        retcode = subprocess.call(cmd)
+        assert retcode == 0, "{0} retcode = {1}".format(cmd, retcode)
 
         key_list = []
         for k in bad_key_list:
@@ -166,7 +167,8 @@ def test_merge_add_two_nodes(client, nodes, write_data_when_two_dropped):
            "--groups", ','.join(map(str, client.groups)),
            "merge"]
     logger.info("{0}\n".format(cmd))
-    subprocess.call(cmd)
+    retcode = subprocess.call(cmd)
+    assert retcode == 0, "{0} retcode = {1}".format(cmd, retcode)
 
     # check all keys and data
     good_keys_list = [k for v in good_keys.values() for k in v]
