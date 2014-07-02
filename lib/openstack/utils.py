@@ -72,14 +72,11 @@ def wait_till_active(session, instances):
         if instance_info['status'] == "ACTIVE":
             # get ip address
             network_name = instance_info['addresses'].keys()[0]
-            for address in instance_info['addresses'][network_name]:
-                if address['version'] == 4:
-                    ip = address['addr']
-                    break
-            else:
-                ip = None
+            ip = [address['addr']
+                  for address in instance_info['addresses'][network_name]
+                  if address['version'] == 4]
             iname = instance + os_hostname_prefix
-            hosts_ip[iname] = ip
+            hosts_ip[iname] = ip[0]
             continue
         queue.appendleft(instance)
     return hosts_ip
