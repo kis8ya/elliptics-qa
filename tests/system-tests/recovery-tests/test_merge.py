@@ -147,7 +147,7 @@ def test_merge_add_two_nodes(client, nodes, write_data_when_two_dropped):
     """Tests that 'dnet_recovery --remote ... merge'
     will recover all keys when there were 2 dropped nodes
     """
-    good_keys, bad_keys, dropped_nodes, dropped_ring_partitioning = write_data_when_two_dropped
+    good_keys, bad_keys, dropped_nodes, _ = write_data_when_two_dropped
 
     # check that "good" keys are accessible
     for key_list in good_keys.values():
