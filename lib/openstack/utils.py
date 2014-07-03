@@ -34,6 +34,14 @@ ENDPOINTS_INFO = {"COMPUTE": {'port': 443,
                                'host': "https://auth.fog.yandex-team.ru",
                                'uri': {"TOKENS": 'v2.0/tokens'}}}
 
+# cloud-init config for customization post-creation actions
+#
+# Options:
+#   apt_preserve_sources_list: preserve existing /etc/apt/sources.list
+USER_DATA = """#cloud-config
+apt_preserve_sources_list: true
+"""
+
 class ApiRequestError(Exception):
     pass
 
