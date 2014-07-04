@@ -46,14 +46,9 @@ def hex_to_id(hex_string):
 
 
 @pytest.fixture(scope='module')
-def indexes_count():
-    """Numbers of indexes for the tests."""
-    return 5
-
-
-@pytest.fixture(scope='module')
-def indexes(indexes_count):
+def indexes():
     """Generates indexes for the tests."""
+    indexes_count = 5
     indexes = [str(j) for j in random.sample(xrange(100000000), indexes_count)]
     return indexes
 
@@ -93,7 +88,7 @@ class IterableData(object):
 
 
 @pytest.fixture(scope='module')
-def ids(pytestconfig, client, indexes, indexes_count):
+def ids(pytestconfig, client, indexes):
     """Prepares data for the tests after basic setting indexes (1).
 
     The data is a dictionary with the following format:
@@ -116,7 +111,7 @@ def ids(pytestconfig, client, indexes, indexes_count):
     count = batches_count * files_count
     data = '?'
     ids = {}
-    idata = IterableData(count * indexes_count)
+    idata = IterableData(count * len(indexes))
 
     for batch_number in xrange(batches_count):
         async_results = []
@@ -144,7 +139,7 @@ def ids(pytestconfig, client, indexes, indexes_count):
 
 
 @pytest.fixture(scope='module')
-def changed_ids(pytestconfig, client, ids, indexes, indexes_count):
+def changed_ids(pytestconfig, client, ids, indexes):
     """Prepares data for the tests after changing indexes (2).
 
     Changes indexes for randomly chosen keys and returns dictionary only with changed data.
@@ -155,7 +150,7 @@ def changed_ids(pytestconfig, client, ids, indexes, indexes_count):
     changed_ids = {}
     ids_to_change = random.sample(ids.keys(), count)
 
-    idata = IterableData(count * indexes_count)
+    idata = IterableData(count * len(indexes))
     async_results = []
     for id_to_change in ids_to_change:
         key_id = hex_to_id(id_to_change)
@@ -178,7 +173,7 @@ def changed_ids(pytestconfig, client, ids, indexes, indexes_count):
 
 
 @pytest.fixture(scope='module')
-def updated_ids(pytestconfig, client, ids, indexes, indexes_count):
+def updated_ids(pytestconfig, client, ids, indexes):
     """Prepares data for the tests after updating indexes (3).
 
     Updates indexes for randomly chosen keys and returns dictionary only with updated data.
@@ -189,7 +184,7 @@ def updated_ids(pytestconfig, client, ids, indexes, indexes_count):
     updated_ids = {}
     ids_to_update = random.sample(ids.keys(), count)
 
-    idata = IterableData(count * indexes_count)
+    idata = IterableData(count * len(indexes))
     async_results = []
     for id_to_update in ids_to_update:
         key_id = hex_to_id(id_to_update)
@@ -212,7 +207,7 @@ def updated_ids(pytestconfig, client, ids, indexes, indexes_count):
 
 
 @pytest.fixture(scope='module')
-def internal_updated_ids(pytestconfig, client, ids, indexes, indexes_count):
+def internal_updated_ids(pytestconfig, client, ids, indexes):
     """Prepares data for the tests after internal updating indexes (4).
 
     Updates indexes (with `update_indexes_internal` command) for randomly chosen keys
@@ -224,7 +219,7 @@ def internal_updated_ids(pytestconfig, client, ids, indexes, indexes_count):
     internal_updated_ids = {}
     ids_to_update = random.sample(ids.keys(), count)
 
-    idata = IterableData(count * indexes_count)
+    idata = IterableData(count * len(indexes))
     async_results = []
     for id_to_update in ids_to_update:
         key_id = hex_to_id(id_to_update)
