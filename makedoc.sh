@@ -3,7 +3,9 @@ DOCPATH=$1
 export PYTHONPATH='lib'
 for i in $(find tests/ -name 'test*.py'); do
   AUXPATH=$(dirname $i)
-  DOCFILE="$DOCPATH/$(basename $i).rst"
+  SECTION=$(basename $AUXPATH)
+  DOCNAME=$(basename $i)
+  DOCFILE="$DOCPATH/$SECTION#$DOCNAME.rst"
   if [ -e $DOCFILE ]; then
     echo "Warning: file $DOCFILE already exists. Overwriting.">&2
   fi
