@@ -1,21 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
-import os
 import subprocess
 import shlex
 import signal
 import socket
+import requests
+import json
 
 from collections import deque
 from functools import wraps
-
-os_auth_url = os.environ.get('OS_AUTH_URL', None)
-os_login = os.environ.get('OS_USERNAME', None)
-os_password = os.environ.get('OS_PASSWORD', None)
-os_tenant_name = os.environ.get('OS_TENANT_NAME', None)
-os_region_name = os.environ.get('OS_REGION_NAME', None)
-os_hostname_prefix = os.environ.get('OS_HOSTNAME_PREFIX', None)
 
 TIMEOUT = 60
 
@@ -64,6 +58,7 @@ def wait_till_active(session, instances):
     """ Waits till instances will be in ACTIVE status
     (and returns a list of dicts {instance_name: ip})
     """
+    os_hostname_prefix = session.hostname_prefix
     hosts_ip = {}
     queue = deque(instances)
     while queue:
@@ -157,3 +152,29 @@ def get_url(endpoint_url, service_type, endpoint_type="COMPUTE", **kwargs):
 def concat_url(endpoint, url):
     """Concatenates endpoint and url ending."""
     return "{}/{}".format(endpoint.strip("/"), url.strip("/"))
+
+def get_user_info(auth_url, login, password, tenant_name):
+    """Returns information about user."""
+    headers = {
+        'Content-Type': "application/json",
+        'Accept': "application/json"
+    }
+
+    data = {
+        'auth': {
+            'tenantName': tenant_name,
+            'passwordCredentials': {
+                'username': login,
+                'password': password
+            }
+        }
+    }
+
+    url = concat_url(auth_url, ENDPOINTS_INFO["IDENTITY"]["uri"]["TOKENS"])
+    r = requests.post(url, data=json.dumps(data), headers=headers, timeout=TIMEOUT)
+
+    if r.status_code not in [requests.status_codes.codes.ok,
+                             requests.status_codes.codes.accepted]:
+        raise ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
+
+    return r.json()
