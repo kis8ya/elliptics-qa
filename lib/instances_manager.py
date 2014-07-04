@@ -1,13 +1,21 @@
 import openstack
 import copy
 
-session = openstack.Session()
+flavors = None
 
-flavors = {None: 0}
-for f in session.get_flavors_list():
-    flavors[f['name']] = f['ram']
+def get_flavors():
+    """Returns flavors dict: {flavor_name: RAM}."""
+    global flavors
+    if flavors is None:
+        session = openstack.Session()
 
-def _get_flavor_name(flavor_id):
+        flavors = {None: 0}
+        for f in session.get_flavors_list():
+            flavors[f['name']] = f['ram']
+
+    return flavors
+
+def _get_flavor_name(session, flavor_id):
     flavor_list = session.get_flavors_list()
     for flavor in flavor_list:
         if flavor['id'] == flavor_id:
@@ -15,22 +23,24 @@ def _get_flavor_name(flavor_id):
     else:
         return None
 
-def _satisfied(instance_name, flavor_name):
+def _satisfied(session, instance_name, flavor_name):
     instance_info = session.get_instance_info(instance_name)
     if instance_info is None:
         return False
     else:
-        current_flavor_name = _get_flavor_name(instance_info['flavor']['id'])
+        flavors = get_flavors()
+        current_flavor_name = _get_flavor_name(session, instance_info['flavor']['id'])
         return flavors[current_flavor_name] >= flavors[flavor_name]
 
 def create(instances_cfg):
+    session = openstack.Session()
     instances = []
     for instance_cfg in instances_cfg['servers']:
         instances_names = openstack.utils.get_instances_names_from_conf(instance_cfg)
         instances += instances_names
         for instance_name in instances_names:
             #TODO: temporary fix for rebuil bug
-            if False and _satisfied(instance_name, instance_cfg["flavor_name"]):
+            if False and _satisfied(session, instance_name, instance_cfg["flavor_name"]):
                 session.rebuild_instance(instance_name)
             else:
                 icfg = copy.deepcopy(instance_cfg)
@@ -47,7 +57,7 @@ def _flavors_order(f):
     """ Ordering function for instance flavor
     (ordering by RAM)
     """
-    return flavors[f]
+    return get_flavors()[f]
 
 def get_instances_cfg(instances_params, base_names):
     """ Prepares instances config for future usage
