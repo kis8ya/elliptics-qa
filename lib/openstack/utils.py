@@ -1,38 +1,33 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
-import os
 import subprocess
 import shlex
 import signal
 import socket
+import requests
+import json
 
 from collections import deque
 from functools import wraps
 
-os_login = os.environ.get('OS_USERNAME', None)
-os_password = os.environ.get('OS_PASSWORD', None)
-os_tenant_name = os.environ.get('OS_TENANT_NAME', None)
-os_region_name = os.environ.get('OS_REGION_NAME', None)
-if os_region_name == "Yandex-Search-SAS1":
-    compute_endpoint = "https://compute-sas1.fog.yandex-team.ru"
-elif os_region_name == "Yandex-Search-FOLB":
-    compute_endpoint = "https://compute-folb.fog.yandex-team.ru"
-os_hostname_prefix = os.environ.get('OS_HOSTNAME_PREFIX', None)
-
 TIMEOUT = 60
 
-ENDPOINTS_INFO = {"COMPUTE": {'port': 443,
-                              'host': compute_endpoint,
-                              'uri': {"IMAGES": 'v2/{tenant_id}/images',
-                                      "FLAVORS": 'v2/{tenant_id}/flavors/detail',
-                                      "NETWORKS": 'v2/{tenant_id}/os-networks',
-                                      "SERVERS": 'v2/{tenant_id}/servers',
-                                      "SERVERS_SERVER": 'v2/{tenant_id}/servers/{instance_id}',
-                                      "ACTION": 'v2/{tenant_id}/servers/{server_id}/action'}},
-                  "IDENTITY": {'port': 443,
-                               'host': "https://auth.fog.yandex-team.ru",
-                               'uri': {"TOKENS": 'v2.0/tokens'}}}
+ENDPOINTS_INFO = {"COMPUTE": {'uri': {"IMAGES": 'images',
+                                      "FLAVORS": 'flavors/detail',
+                                      "NETWORKS": 'os-networks',
+                                      "SERVERS": 'servers',
+                                      "SERVERS_SERVER": 'servers/{instance_id}',
+                                      "ACTION": 'servers/{server_id}/action'}},
+                  "IDENTITY": {'uri': {"TOKENS": 'tokens'}}}
+
+# cloud-init config for customization post-creation actions
+#
+# Options:
+#   apt_preserve_sources_list: preserve existing /etc/apt/sources.list
+USER_DATA = """#cloud-config
+apt_preserve_sources_list: true
+"""
 
 class ApiRequestError(Exception):
     pass
@@ -63,6 +58,7 @@ def wait_till_active(session, instances):
     """ Waits till instances will be in ACTIVE status
     (and returns a list of dicts {instance_name: ip})
     """
+    os_hostname_prefix = session.hostname_prefix
     hosts_ip = {}
     queue = deque(instances)
     while queue:
@@ -146,12 +142,39 @@ def get_instances_names_from_conf(instance_cfg):
         instances = [ name + '-' + str(i) for i in range(1, count + 1) ]
     return instances
 
-def get_url(service_type, endpoint_type="COMPUTE", **kwargs):
+def get_url(endpoint_url, service_type, endpoint_type="COMPUTE", **kwargs):
     """ Returns Service Endpoint URL
     """
-    url = '{host}:{port}/{uri}'.format(
-        host=ENDPOINTS_INFO[endpoint_type]['host'],
-        port=ENDPOINTS_INFO[endpoint_type]['port'],
-        uri=ENDPOINTS_INFO[endpoint_type]['uri'][service_type])
+    url = concat_url(endpoint_url, ENDPOINTS_INFO[endpoint_type]['uri'][service_type])
     url = url.format(**kwargs)
     return url
+
+def concat_url(endpoint, url):
+    """Concatenates endpoint and url ending."""
+    return "{}/{}".format(endpoint.strip("/"), url.strip("/"))
+
+def get_user_info(auth_url, login, password, tenant_name):
+    """Returns information about user."""
+    headers = {
+        'Content-Type': "application/json",
+        'Accept': "application/json"
+    }
+
+    data = {
+        'auth': {
+            'tenantName': tenant_name,
+            'passwordCredentials': {
+                'username': login,
+                'password': password
+            }
+        }
+    }
+
+    url = concat_url(auth_url, ENDPOINTS_INFO["IDENTITY"]["uri"]["TOKENS"])
+    r = requests.post(url, data=json.dumps(data), headers=headers, timeout=TIMEOUT)
+
+    if r.status_code not in [requests.status_codes.codes.ok,
+                             requests.status_codes.codes.accepted]:
+        raise ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
+
+    return r.json()

@@ -10,12 +10,18 @@ import ConfigParser
 import pytest
 import subprocess
 import logging
+import traceback
 
 import ansible_manager
 import instances_manager
 import teamcity_messages
 
 from config_template_renderer import get_cfg
+
+# Exit codes
+EXIT_OK = 0
+EXIT_TESTSFAILED = 1
+EXIT_INTERNALERROR = 3
 
 # util functions
 def qa_storage_upload(file_path):
@@ -33,21 +39,33 @@ def qa_storage_upload(file_path):
 
     return url
 
+class InfoFilter(logging.Filter):
+    """Custom filter for runner_logger."""
+    def filter(self, record):
+        """Filters INFO level records."""
+        return record.levelno is logging.INFO
+
 def setup_loggers(teamcity, verbose):
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
+    info_handler = logging.StreamHandler(sys.stdout)
+    info_handler.setLevel(logging.INFO)
     formatter = logging.Formatter("%(message)s")
-    handler.setFormatter(formatter)
+    info_handler.setFormatter(formatter)
+    info_handler.addFilter(InfoFilter())
+
+    error_handler = logging.StreamHandler()
+    error_handler.setLevel(logging.ERROR)
+    error_handler.setFormatter(formatter)
 
     tc_logging_level = logging.INFO if teamcity else logging.ERROR
     tc_logger = logging.getLogger('teamcity_logger')
     tc_logger.setLevel(tc_logging_level)
-    tc_logger.addHandler(handler)
+    tc_logger.addHandler(info_handler)
 
     runner_logging_level = logging.INFO if verbose else logging.ERROR
     runner_logger = logging.getLogger('runner_logger')
     runner_logger.setLevel(runner_logging_level)
-    runner_logger.addHandler(handler)
+    runner_logger.addHandler(info_handler)
+    runner_logger.addHandler(error_handler)
 
     conf_file = 'lib/test_helper/logger.ini'
     parser = ConfigParser.ConfigParser()
@@ -75,13 +93,14 @@ class TestRunner(object):
         self.logger = logging.getLogger('runner_logger')
         self.teamcity = args.teamcity
 
-        self.instances_names = {'client': "{0}-client".format(args.instance_name),
-                                'server': "{0}-server".format(args.instance_name)}
-        self.tests = self.collect_tests(args.tags)
-        self.instances_params = self.collect_instances_params()
         #TODO: move working with this parameter to openstack module
         self.os_hostname_prefix = os.environ.get("OS_HOSTNAME_PREFIX", None)
 
+        self.instances_names = {'client': "{0}-client".format(args.instance_name),
+                                'server': "{0}-server".format(args.instance_name)}
+
+        self.tests = self.collect_tests(args.tags)
+        self.instances_params = self.collect_instances_params()
         self.prepare_base_environment()
 
     def collect_tests(self, tags):
@@ -202,13 +221,20 @@ class TestRunner(object):
                                          test["test_env_cfg"]["servers"]["count_per_group"]))
 
     def run_playbook_test(self, test_name):
-        ansible_manager.run_playbook(self.abspath(self.tests[test_name]["playbook"]),
-                                     self.get_inventory_path(test_name))
+        try:
+            ansible_manager.run_playbook(self.abspath(self.tests[test_name]["playbook"]),
+                                         self.get_inventory_path(test_name))
+        except RuntimeError as exc:
+            self.logger.error(exc.message)
+            return False
+        return True
 
     def run_pytest_test(self, test_name):
         rsyncdir_opts = "--rsyncdir tests/ --rsyncdir lib/test_helper"
         clients_names = ansible_manager.get_host_names(self.instances_names["client"],
                                                        self.tests[test_name]["test_env_cfg"]["clients"]["count"])
+
+        succeded = True
         for client_name in clients_names:
             if self.teamcity:
                 opts = '--teamcity'
@@ -221,15 +247,21 @@ class TestRunner(object):
                                rsyncdir_opts,
                                self.tests[test_name]["dir"])
             self.logger.info(opts)
-            pytest.main(opts)
+
+            exitcode = pytest.main(opts)
+            if exitcode:
+                succeded = False
+
+        return succeded
 
     def run(self, test_name):
         if self.tests[test_name].get("playbook"):
-            self.run_playbook_test(test_name)
+            return self.run_playbook_test(test_name)
         elif self.tests[test_name].get("dir"):
-            self.run_pytest_test(test_name)
+            return self.run_pytest_test(test_name)
         else:
             self.logger.info("Can't specify running method for {0} test.\n".format(test_name))
+            return False
 
     def teardown(self, test_name):
         # Do clean-up steps for a test
@@ -237,11 +269,17 @@ class TestRunner(object):
                                      self.get_inventory_path(test_name))
 
     def run_tests(self):
+        testsfailed = 0
         for test_name, test_cfg in self.tests.items():
             with teamcity_messages.block("TEST: {0}".format(test_name)):
                 self.setup(test_name)
-                self.run(test_name)
+                if not self.run(test_name):
+                    testsfailed += 1
                 self.teardown(test_name)
+        if testsfailed:
+            return False
+        else:
+            return True
 
     def abspath(self, path):
         abs_path = os.path.join(self.ansible_dir, path)
@@ -256,33 +294,43 @@ class TestRunner(object):
         return path
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--configs-dir', dest="configs_dir", required=True,
-                        help="directory with tests' configs")
-    parser.add_argument('--testsuite-params', dest="testsuite_params", default=None,
-                        help="path to file with parameters which will override default parameters for specified test suite.")
-    parser.add_argument('--tag', action="append", dest="tags",
-                        help="specifying which tests to run.")
-    parser.add_argument('--instance-name', dest="instance_name", default="elliptics",
-                        help="base name for the instances.")
-    parser.add_argument('--verbose', '-v', action="store_true", dest="verbose",
-                        help="increase verbosity")
-    parser.add_argument('--teamcity', action="store_true", dest="teamcity",
-                        help="will format output with Teamcity messages.")
-    args = parser.parse_args()
+    exitcode = EXIT_OK
 
-    setup_loggers(args.teamcity, args.verbose)
+    try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--configs-dir', dest="configs_dir", required=True,
+                            help="directory with tests' configs")
+        parser.add_argument('--testsuite-params', dest="testsuite_params", default=None,
+                            help="path to file with parameters which will override default "
+                            "parameters for specified test suite.")
+        parser.add_argument('--tag', action="append", dest="tags",
+                            help="specifying which tests to run.")
+        parser.add_argument('--instance-name', dest="instance_name", default="elliptics",
+                            help="base name for the instances.")
+        parser.add_argument('--verbose', '-v', action="store_true", dest="verbose",
+                            help="increase verbosity")
+        parser.add_argument('--teamcity', action="store_true", dest="teamcity",
+                            help="will format output with Teamcity messages.")
+        args = parser.parse_args()
 
-    testrunner = TestRunner(args)
-    testrunner.run_tests()
+        setup_loggers(args.teamcity, args.verbose)
 
-    # collect logs
-    with teamcity_messages.block("LOGS: Collecting logs"):
-        ansible_manager.run_playbook(testrunner.abspath("collect-logs"),
-                                     testrunner.get_inventory_path("test-env-prepare"))
+        testrunner = TestRunner(args)
+        if not testrunner.run_tests():
+            exitcode = EXIT_TESTSFAILED
 
-    if args.teamcity:
-        with teamcity_messages.block("LOGS: Links"):
-            path = "/tmp/logs-archive"
-            for f in os.listdir(path):
-                print(qa_storage_upload(os.path.join(path, f)))
+        # collect logs
+        with teamcity_messages.block("LOGS: Collecting logs"):
+            ansible_manager.run_playbook(testrunner.abspath("collect-logs"),
+                                         testrunner.get_inventory_path("test-env-prepare"))
+
+        if args.teamcity:
+            with teamcity_messages.block("LOGS: Links"):
+                path = "/tmp/logs-archive"
+                for f in os.listdir(path):
+                    print(qa_storage_upload(os.path.join(path, f)))
+    except:
+        traceback.print_exc(file=sys.stderr)
+        exitcode = EXIT_INTERNALERROR
+
+    sys.exit(exitcode)
