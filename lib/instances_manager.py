@@ -43,9 +43,6 @@ def create(instances_cfg):
 
     return openstack.utils.check_availability(session, instances)
 
-def delete(instances_cfg):
-    session.delete_instances(instances_cfg)
-
 def _flavors_order(f):
     """ Ordering function for instance flavor
     (ordering by RAM)
