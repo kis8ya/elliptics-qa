@@ -12,12 +12,14 @@ class Session:
                  auth_url=utils.os_auth_url,
                  login=utils.os_login,
                  password=utils.os_password,
-                 tenant_name=utils.os_tenant_name):
+                 tenant_name=utils.os_tenant_name,
+                 region_name=utils.os_region_name):
         self.tenant_name = tenant_name
+        self.region_name=region_name
         self._authenticate(auth_url, login, password)
 
     def _authenticate(self, auth_url, login, password):
-        """Authenticates."""
+        """Authenticates and collects the service catalog."""
         headers = {
             'Content-Type': "application/json",
             'Accept': "application/json"
@@ -42,8 +44,20 @@ class Session:
 
         info = r.json()
 
+        # Collect session information
         self.token_id = info['access']['token']['id']
         self.tenant_id = info['access']['token']['tenant']['id']
+
+        self.service_catalog = self._get_service_catalog(info['access']['serviceCatalog'])
+
+    def _get_service_catalog(self, services_list):
+        """Returns the service catalog."""
+        catalog = {}
+        for service in services_list:
+            service_url = [i['adminURL'] for i in service['endpoints']
+                           if i['region'] == self.region_name]
+            catalog[service['type']] = service_url[0] if service_url else None
+        return catalog
 
     def get(self, url):
         headers = {'Accept': "application/json",
@@ -133,7 +147,7 @@ class Session:
         """ Creates instance
         """
         data = self._get_data_from_config(data)
-        url = utils.get_url("SERVERS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "SERVERS", tenant_id=self.tenant_id)
 
         instance_info = self.post(url, data)
 
@@ -148,7 +162,8 @@ class Session:
         else:
             instance_id = instance_info['id']
 
-        url = utils.get_url("SERVERS_SERVER", tenant_id=self.tenant_id, instance_id=instance_id)
+        url = utils.get_url(self.service_catalog['compute'], "SERVERS_SERVER",
+                            tenant_id=self.tenant_id, instance_id=instance_id)
 
         self.delete(url)
 
@@ -168,7 +183,8 @@ class Session:
                             "imageRef": image_ref,
                             "adminPass": utils.os_password}}
 
-        url = utils.get_url("ACTION", tenant_id=self.tenant_id, server_id=instance_id)
+        url = utils.get_url(self.service_catalog['compute'], "ACTION",
+                            tenant_id=self.tenant_id, server_id=instance_id)
 
         response = self.post(url, data)
 
@@ -177,7 +193,7 @@ class Session:
     def get_user_info(self, login=utils.os_login, password=utils.os_password):
         """ Returns information about user
         """
-        url = utils.get_url("TOKENS", "IDENTITY")
+        url = utils.get_url(self.service_catalog['identity'], "TOKENS", "IDENTITY")
 
         data = {
             'auth': {
@@ -196,21 +212,21 @@ class Session:
     def get_images_list(self):
         """ Returns list of images
         """
-        url = utils.get_url("IMAGES", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "IMAGES", tenant_id=self.tenant_id)
         images_list = self.get(url)['images']
         return images_list
 
     def get_flavors_list(self):
         """ Returns list of flavors (CPU's, RAM, disk space)
         """
-        url = utils.get_url("FLAVORS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "FLAVORS", tenant_id=self.tenant_id)
         flavors_list = self.get(url)['flavors']
         return flavors_list
 
     def get_networks_list(self):
         """ Returns list of networks
         """
-        url = utils.get_url("NETWORKS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "NETWORKS", tenant_id=self.tenant_id)
         networks_list = self.get(url)['networks']
         return networks_list
 
@@ -260,12 +276,13 @@ class Session:
         else:
             return None
                 
-        url = utils.get_url("SERVERS_SERVER", tenant_id=self.tenant_id, instance_id=instance_id)
+        url = utils.get_url(self.service_catalog['compute'], "SERVERS_SERVER",
+                            tenant_id=self.tenant_id, instance_id=instance_id)
         instance = self.get(url)['server']
         
         return instance
 
     def get_instances(self):
-        url = utils.get_url("SERVERS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "SERVERS", tenant_id=self.tenant_id)
         instances = self.get(url)['servers']
         return instances
