@@ -4,64 +4,52 @@ import base64
 import json
 import time
 import socket
+import os
 
 import utils
 
 class Session:
-    def __init__(self,
-                 auth_url=utils.os_auth_url,
-                 login=utils.os_login,
-                 password=utils.os_password,
-                 tenant_name=utils.os_tenant_name,
-                 region_name=utils.os_region_name):
-        self.tenant_name = tenant_name
-        self.region_name=region_name
-        self._authenticate(auth_url, login, password)
+    def __init__(self, auth_url=None, login=None, password=None,
+                 tenant_name=None, region_name=None, hostname_prefix=None):
+        if auth_url is None:
+            auth_url = os.environ.get('OS_AUTH_URL')
+        if login is None:
+            login = os.environ.get('OS_USERNAME')
+        if password is None:
+            self.password = os.environ.get('OS_PASSWORD')
+        else:
+            self.password = password
+        if region_name is None:
+            region_name = os.environ.get('OS_REGION_NAME')
+        if tenant_name is None:
+            tenant_name = os.environ.get('OS_TENANT_NAME')
+        if hostname_prefix is None:
+            self.hostname_prefix = os.environ.get('OS_HOSTNAME_PREFIX')
+        else:
+            self.hostname_prefix = hostname_prefix
 
-    def _authenticate(self, auth_url, login, password):
+        self._authenticate(auth_url, login, self.password, tenant_name, region_name)
+
+    def _authenticate(self, auth_url, login, password, tenant_name, region_name):
         """Authenticates and collects the service catalog."""
-        headers = {
-            'Content-Type': "application/json",
-            'Accept': "application/json"
-        }
-
-        data = {
-            'auth': {
-                'tenantName': self.tenant_name,
-                'passwordCredentials': {
-                    'username': login,
-                    'password': password
-                }
-            }
-        }
-
-        url = utils.concat_url(auth_url, "tokens")
-        r = requests.post(url, data=json.dumps(data), headers=headers, timeout=utils.TIMEOUT)
-
-        if r.status_code not in [requests.status_codes.codes.ok,
-                                 requests.status_codes.codes.accepted]:
-            raise utils.ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
-
-        info = r.json()
-
-        # Collect session information
+        info = utils.get_user_info(auth_url, login, password, tenant_name)
+        # Collect authorization token
         self.token_id = info['access']['token']['id']
-        self.tenant_id = info['access']['token']['tenant']['id']
 
-        self.service_catalog = self._get_service_catalog(info['access']['serviceCatalog'])
+        self.service_catalog = self._get_service_catalog(info['access']['serviceCatalog'],
+                                                         region_name)
 
-    def _get_service_catalog(self, services_list):
+    def _get_service_catalog(self, services_list, region_name):
         """Returns the service catalog."""
         catalog = {}
         for service in services_list:
             service_url = [i['adminURL'] for i in service['endpoints']
-                           if i['region'] == self.region_name]
+                           if i['region'] == region_name]
             catalog[service['type']] = service_url[0] if service_url else None
         return catalog
 
     def get(self, url):
         headers = {'Accept': "application/json",
-                   'X-Auth-Project-Id': self.tenant_name,
                    'X-Auth-Token': self.token_id}
 
         r = requests.get(url, headers=headers, timeout=utils.TIMEOUT)
@@ -75,7 +63,6 @@ class Session:
         headers = {
             'Content-Type': "application/json",
             'Accept': "application/json",
-            'X-Auth-Project-Id': self.tenant_name,
             'X-Auth-Token': self.token_id
         }
 
@@ -90,7 +77,6 @@ class Session:
     def delete(self, url):
         headers = {'Content-Type': "application/json",
                    'Accept': "application/json",
-                   'X-Auth-Project-Id': self.tenant_name,
                    'X-Auth-Token': self.token_id}
 
         r = requests.delete(url, headers=headers, timeout=utils.TIMEOUT)
@@ -147,7 +133,7 @@ class Session:
         """ Creates instance
         """
         data = self._get_data_from_config(data)
-        url = utils.get_url(self.service_catalog['compute'], "SERVERS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "SERVERS")
 
         instance_info = self.post(url, data)
 
@@ -163,7 +149,7 @@ class Session:
             instance_id = instance_info['id']
 
         url = utils.get_url(self.service_catalog['compute'], "SERVERS_SERVER",
-                            tenant_id=self.tenant_id, instance_id=instance_id)
+                            instance_id=instance_id)
 
         self.delete(url)
 
@@ -181,52 +167,33 @@ class Session:
 
         data = {"rebuild": {"name": instance_name,
                             "imageRef": image_ref,
-                            "adminPass": utils.os_password}}
+                            "adminPass": self.password}}
 
         url = utils.get_url(self.service_catalog['compute'], "ACTION",
-                            tenant_id=self.tenant_id, server_id=instance_id)
+                            server_id=instance_id)
 
         response = self.post(url, data)
 
         return response
 
-    def get_user_info(self, login=utils.os_login, password=utils.os_password):
-        """ Returns information about user
-        """
-        url = utils.get_url(self.service_catalog['identity'], "TOKENS", "IDENTITY")
-
-        data = {
-            'auth': {
-                'tenantName': self.tenant_name,
-                'passwordCredentials': {
-                    'username': login,
-                    'password': password
-                    }
-                }
-            }
-
-        info = self.post(url, data)
-
-        return info
-
     def get_images_list(self):
         """ Returns list of images
         """
-        url = utils.get_url(self.service_catalog['compute'], "IMAGES", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "IMAGES")
         images_list = self.get(url)['images']
         return images_list
 
     def get_flavors_list(self):
         """ Returns list of flavors (CPU's, RAM, disk space)
         """
-        url = utils.get_url(self.service_catalog['compute'], "FLAVORS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "FLAVORS")
         flavors_list = self.get(url)['flavors']
         return flavors_list
 
     def get_networks_list(self):
         """ Returns list of networks
         """
-        url = utils.get_url(self.service_catalog['compute'], "NETWORKS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "NETWORKS")
         networks_list = self.get(url)['networks']
         return networks_list
 
@@ -277,12 +244,12 @@ class Session:
             return None
                 
         url = utils.get_url(self.service_catalog['compute'], "SERVERS_SERVER",
-                            tenant_id=self.tenant_id, instance_id=instance_id)
+                            instance_id=instance_id)
         instance = self.get(url)['server']
         
         return instance
 
     def get_instances(self):
-        url = utils.get_url(self.service_catalog['compute'], "SERVERS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "SERVERS")
         instances = self.get(url)['servers']
         return instances
