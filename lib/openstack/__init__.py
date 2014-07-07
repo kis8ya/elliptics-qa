@@ -9,11 +9,39 @@ import utils
 
 class Session:
     def __init__(self,
+                 auth_url=utils.os_auth_url,
                  login=utils.os_login,
                  password=utils.os_password,
                  tenant_name=utils.os_tenant_name):
         self.tenant_name = tenant_name
-        info = self.get_user_info(login, password)
+        self._authenticate(auth_url, login, password)
+
+    def _authenticate(self, auth_url, login, password):
+        """Authenticates."""
+        headers = {
+            'Content-Type': "application/json",
+            'Accept': "application/json"
+        }
+
+        data = {
+            'auth': {
+                'tenantName': self.tenant_name,
+                'passwordCredentials': {
+                    'username': login,
+                    'password': password
+                }
+            }
+        }
+
+        url = utils.concat_url(auth_url, "tokens")
+        r = requests.post(url, data=json.dumps(data), headers=headers, timeout=utils.TIMEOUT)
+
+        if r.status_code not in [requests.status_codes.codes.ok,
+                                 requests.status_codes.codes.accepted]:
+            raise utils.ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
+
+        info = r.json()
+
         self.token_id = info['access']['token']['id']
         self.tenant_id = info['access']['token']['tenant']['id']
 
@@ -30,11 +58,12 @@ class Session:
         return r.json()
 
     def post(self, url, data):
-        headers = {'Content-Type': "application/json",
-                   'Accept': "application/json"}
-        if hasattr(self, 'token_id'):
-            headers['X-Auth-Project-Id'] = self.tenant_name
-            headers['X-Auth-Token'] = self.token_id
+        headers = {
+            'Content-Type': "application/json",
+            'Accept': "application/json",
+            'X-Auth-Project-Id': self.tenant_name,
+            'X-Auth-Token': self.token_id
+        }
 
         r = requests.post(url, data=json.dumps(data), headers=headers, timeout=utils.TIMEOUT)
 

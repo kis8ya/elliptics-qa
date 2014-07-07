@@ -10,6 +10,7 @@ import socket
 from collections import deque
 from functools import wraps
 
+os_auth_url = os.environ.get('OS_AUTH_URL', None)
 os_login = os.environ.get('OS_USERNAME', None)
 os_password = os.environ.get('OS_PASSWORD', None)
 os_tenant_name = os.environ.get('OS_TENANT_NAME', None)
@@ -163,3 +164,7 @@ def get_url(service_type, endpoint_type="COMPUTE", **kwargs):
         uri=ENDPOINTS_INFO[endpoint_type]['uri'][service_type])
     url = url.format(**kwargs)
     return url
+
+def concat_url(endpoint, url):
+    """Concatenates endpoint and url ending."""
+    return "{}/{}".format(endpoint.strip("/"), url.strip("/"))
