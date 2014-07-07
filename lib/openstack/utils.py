@@ -178,3 +178,12 @@ def get_user_info(auth_url, login, password, tenant_name):
         raise ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
 
     return r.json()
+
+def get_service_catalog(services_list, region_name):
+    """Returns the service catalog."""
+    catalog = {}
+    for service in services_list:
+        service_url = [i['adminURL'] for i in service['endpoints']
+                       if i['region'] == region_name]
+        catalog[service['type']] = service_url[0] if service_url else None
+    return catalog

@@ -11,42 +11,18 @@ import utils
 class Session:
     def __init__(self, auth_url=None, login=None, password=None,
                  tenant_name=None, region_name=None, hostname_prefix=None):
-        if auth_url is None:
-            auth_url = os.environ.get('OS_AUTH_URL')
-        if login is None:
-            login = os.environ.get('OS_USERNAME')
-        if password is None:
-            self.password = os.environ.get('OS_PASSWORD')
-        else:
-            self.password = password
-        if region_name is None:
-            region_name = os.environ.get('OS_REGION_NAME')
-        if tenant_name is None:
-            tenant_name = os.environ.get('OS_TENANT_NAME')
-        if hostname_prefix is None:
-            self.hostname_prefix = os.environ.get('OS_HOSTNAME_PREFIX')
-        else:
-            self.hostname_prefix = hostname_prefix
-
-        self._authenticate(auth_url, login, self.password, tenant_name, region_name)
-
-    def _authenticate(self, auth_url, login, password, tenant_name, region_name):
-        """Authenticates and collects the service catalog."""
-        info = utils.get_user_info(auth_url, login, password, tenant_name)
+        auth_url = auth_url or os.environ.get('OS_AUTH_URL')
+        login = login or os.environ.get('OS_USERNAME')
+        self.password = password or os.environ.get('OS_PASSWORD')
+        region_name = region_name or os.environ.get('OS_REGION_NAME')
+        tenant_name = tenant_name or os.environ.get('OS_TENANT_NAME')
+        self.hostname_prefix = hostname_prefix or os.environ.get('OS_HOSTNAME_PREFIX')
+        user_info = utils.get_user_info(auth_url, login, self.password, tenant_name)
         # Collect authorization token
-        self.token_id = info['access']['token']['id']
-
-        self.service_catalog = self._get_service_catalog(info['access']['serviceCatalog'],
+        self.token_id = user_info['access']['token']['id']
+        # Collect services' endpoints
+        self.service_catalog = utils.get_service_catalog(user_info['access']['serviceCatalog'],
                                                          region_name)
-
-    def _get_service_catalog(self, services_list, region_name):
-        """Returns the service catalog."""
-        catalog = {}
-        for service in services_list:
-            service_url = [i['adminURL'] for i in service['endpoints']
-                           if i['region'] == region_name]
-            catalog[service['type']] = service_url[0] if service_url else None
-        return catalog
 
     def get(self, url):
         headers = {'Accept': "application/json",
