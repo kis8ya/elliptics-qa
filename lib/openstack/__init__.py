@@ -8,10 +8,6 @@ import socket
 import utils
 
 class Session:
-    __USER_DATA = """#cloud-config
-apt_preserve_sources_list: true
-"""
-
     def __init__(self,
                  login=utils.os_login,
                  password=utils.os_password,
@@ -30,7 +26,7 @@ apt_preserve_sources_list: true
 
         if r.status_code != requests.status_codes.codes.ok:
             raise utils.ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
-        
+
         return r.json()
 
     def post(self, url, data):
@@ -221,7 +217,7 @@ apt_preserve_sources_list: true
                 "max_count": config['max_count'],
                 "min_count": config['min_count'],
                 "networks": self.get_networks_uuid_list(config['networks_label_list']),
-                "user_data": base64.b64encode(Session.__USER_DATA)
+                "user_data": base64.b64encode(utils.USER_DATA)
                 }
             }
 
