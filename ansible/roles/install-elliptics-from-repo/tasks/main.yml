@@ -1,6 +1,7 @@
 ---
 - name: Install Elliptics packages
   shell: >
+    sudo
     apt-get
     install
     --assume-yes
