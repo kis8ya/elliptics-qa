@@ -1,5 +1,6 @@
 import openstack
 import copy
+import time
 
 session = openstack.Session()
 
