@@ -31,7 +31,7 @@ class Session:
         r = requests.get(url, headers=headers, timeout=utils.TIMEOUT)
 
         if r.status_code != requests.status_codes.codes.ok:
-            raise utils.ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
+            raise utils.OpenStackApiError(r.json(), r.status_code)
 
         return r.json()
 
@@ -46,7 +46,7 @@ class Session:
 
         if r.status_code not in [requests.status_codes.codes.ok,
                                  requests.status_codes.codes.accepted]:
-            raise utils.ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
+            raise utils.OpenStackApiError(r.json(), r.status_code)
         
         return r.json()
 
@@ -58,7 +58,7 @@ class Session:
         r = requests.delete(url, headers=headers, timeout=utils.TIMEOUT)
 
         if r.status_code != 204:
-            raise utils.ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
+            raise utils.OpenStackApiError(r.json(), r.status_code)
 
     def create_instances(self, config, check=True):
         # Waiting for DNS records update
@@ -221,7 +221,13 @@ class Session:
                 
         url = utils.get_url(self.service_catalog['compute'], "SERVERS_SERVER",
                             instance_id=instance_id)
-        instance = self.get(url)['server']
+        try:
+            instance = self.get(url)['server']
+        except utils.OpenStackApiError as e:
+            if e.response_code == requests.status_codes.codes.not_found:
+                return None
+            else:
+                raise
         
         return instance
 

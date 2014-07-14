@@ -7,6 +7,7 @@ import signal
 import socket
 import requests
 import json
+import time
 
 from collections import deque
 from functools import wraps
@@ -29,29 +30,38 @@ USER_DATA = """#cloud-config
 apt_preserve_sources_list: true
 """
 
-class ApiRequestError(Exception):
-    pass
+class OpenStackApiError(Exception):
+    def __init__(self, message, response_code):
+        Exception.__init__(self, message)
+        self.response_code = response_code
+
+    def __str__(self):
+        return json.dumps(self.message, indent=4)
 
 class TimeoutError(Exception):
     pass
 
-def _alarm_handler(signal, frame):
-    raise TimeoutError()
+def with_timeout(timeout=300):
+    """Raises the timeout exception for decorated function after specific execution time."""
+    def _alarm_handler(signal, frame):
+        raise TimeoutError()
 
-def with_timeout(func):
-    def _decorator(self, *args, **kwargs):
-        # set timeout
-        signal.signal(signal.SIGALRM, _alarm_handler)
-        # to 5 minutes
-        signal.alarm(300)
+    def wrapper(func):
+        @wraps(func)
+        def decorator(*args, **kwargs):
+            # set timeout
+            signal.signal(signal.SIGALRM, _alarm_handler)
+            signal.alarm(timeout)
 
-        result = func(self, *args, **kwargs)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                # turn off timer when the function processed
+                signal.alarm(0)
 
-        # turn off timer when the function processed
-        signal.alarm(0)
-
-        return result
-    return wraps(func)(_decorator)
+            return result
+        return decorator
+    return wrapper
 
 @with_timeout
 def wait_till_active(session, instances):
@@ -175,7 +185,7 @@ def get_user_info(auth_url, login, password, tenant_name):
 
     if r.status_code not in [requests.status_codes.codes.ok,
                              requests.status_codes.codes.accepted]:
-        raise ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
+        raise OpenStackApiError(r.json(), r.status_code)
 
     return r.json()
 
@@ -187,3 +197,9 @@ def get_service_catalog(services_list, region_name):
                        if i['region'] == region_name]
         catalog[service['type']] = service_url[0] if service_url else None
     return catalog
+
+@with_timeout(120)
+def wait_till_deleted(session, instance_name):
+    """Waits for instance deletion."""
+    while session.get_instance_info(instance_name):
+        time.sleep(1)
