@@ -31,6 +31,10 @@ apt_preserve_sources_list: true
 """
 
 class OpenStackApiError(Exception):
+    def __init__(self, message, response_code):
+        Exception.__init__(self, message)
+        self.response_code = response_code
+
     def __str__(self):
         return json.dumps(self.message, indent=4)
 
@@ -177,7 +181,7 @@ def get_user_info(auth_url, login, password, tenant_name):
 
     if r.status_code not in [requests.status_codes.codes.ok,
                              requests.status_codes.codes.accepted]:
-        raise OpenStackApiError(r.json())
+        raise OpenStackApiError(r.json(), r.status_code)
 
     return r.json()
 
@@ -196,5 +200,8 @@ def wait_deletion_for(session, instance_name):
     try:
         while session.get_instance_info(instance_name):
             time.sleep(1)
-    except OpenStackApiError:
-        pass
+    except OpenStackApiError as e:
+        if e.response_code == requests.status_codes.codes.not_found:
+            pass
+        else:
+            raise
