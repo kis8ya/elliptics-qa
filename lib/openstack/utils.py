@@ -41,11 +41,11 @@ class OpenStackApiError(Exception):
 class TimeoutError(Exception):
     pass
 
-def _alarm_handler(signal, frame):
-    raise TimeoutError()
-
 def with_timeout(timeout=300):
     """Raises the timeout exception for decorated function after specific execution time."""
+    def _alarm_handler(signal, frame):
+        raise TimeoutError()
+
     def wrapper(func):
         @wraps(func)
         def decorator(*args, **kwargs):
