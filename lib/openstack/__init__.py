@@ -221,7 +221,13 @@ class Session:
                 
         url = utils.get_url(self.service_catalog['compute'], "SERVERS_SERVER",
                             instance_id=instance_id)
-        instance = self.get(url)['server']
+        try:
+            instance = self.get(url)['server']
+        except OpenStackApiError as e:
+            if e.response_code == requests.status_codes.codes.not_found:
+                return None
+            else:
+                raise
         
         return instance
 
