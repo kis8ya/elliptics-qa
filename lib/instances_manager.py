@@ -1,6 +1,5 @@
 import openstack
 import copy
-import time
 
 session = openstack.Session()
 
@@ -40,15 +39,7 @@ def create(instances_cfg):
                 icfg = {"servers": [icfg]}
 
                 session.delete_instance(instance_name)
-                # Wait for instance deletion
-                for i in xrange(120):
-                    try:
-                        info = session.get_instance_info(instance_name)
-                        if info is None:
-                            break
-                        time.sleep(1)
-                    except openstack.utils.ApiRequestError:
-                        break
+                utils.wait_deletion_for(session, instance_name)
                 session.create_instances(icfg, check=False)
 
     return openstack.utils.check_availability(session, instances)

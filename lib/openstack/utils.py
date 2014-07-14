@@ -7,6 +7,7 @@ import signal
 import socket
 import requests
 import json
+import time
 
 from collections import deque
 from functools import wraps
@@ -188,3 +189,15 @@ def get_service_catalog(services_list, region_name):
                        if i['region'] == region_name]
         catalog[service['type']] = service_url[0] if service_url else None
     return catalog
+
+@with_timeout
+def wait_deletion_for(session, instance_name):
+    """Waits for instance deletion."""
+    while True:
+        try:
+            info = session.get_instance_info(instance_name)
+            if info is None:
+                return
+            time.sleep(1)
+        except OpenStackApiError:
+            return
