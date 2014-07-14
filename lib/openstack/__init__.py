@@ -223,7 +223,7 @@ class Session:
                             instance_id=instance_id)
         try:
             instance = self.get(url)['server']
-        except OpenStackApiError as e:
+        except utils.OpenStackApiError as e:
             if e.response_code == requests.status_codes.codes.not_found:
                 return None
             else:
