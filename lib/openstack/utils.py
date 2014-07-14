@@ -51,7 +51,6 @@ def with_timeout(timeout=300):
         def decorator(*args, **kwargs):
             # set timeout
             signal.signal(signal.SIGALRM, _alarm_handler)
-            # to 5 minutes
             signal.alarm(timeout)
 
             try:
