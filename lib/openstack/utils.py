@@ -44,20 +44,24 @@ class TimeoutError(Exception):
 def _alarm_handler(signal, frame):
     raise TimeoutError()
 
-def with_timeout(func):
-    def _decorator(self, *args, **kwargs):
-        # set timeout
-        signal.signal(signal.SIGALRM, _alarm_handler)
-        # to 5 minutes
-        signal.alarm(300)
+def with_timeout(timeout=300):
+    """Raises the timeout exception for decorated function after specific execution time."""
+    def wrapper(func):
+        @wraps(func)
+        def decorator(*args, **kwargs):
+            # set timeout
+            signal.signal(signal.SIGALRM, _alarm_handler)
+            # to 5 minutes
+            signal.alarm(timeout)
 
-        result = func(self, *args, **kwargs)
+            result = func(*args, **kwargs)
 
-        # turn off timer when the function processed
-        signal.alarm(0)
+            # turn off timer when the function processed
+            signal.alarm(0)
 
-        return result
-    return wraps(func)(_decorator)
+            return result
+        return decorator
+    return wrapper
 
 @with_timeout
 def wait_till_active(session, instances):
@@ -194,7 +198,7 @@ def get_service_catalog(services_list, region_name):
         catalog[service['type']] = service_url[0] if service_url else None
     return catalog
 
-@with_timeout
+@with_timeout(120)
 def wait_deletion_for(session, instance_name):
     """Waits for instance deletion."""
     try:
