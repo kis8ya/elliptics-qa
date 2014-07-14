@@ -29,8 +29,9 @@ USER_DATA = """#cloud-config
 apt_preserve_sources_list: true
 """
 
-class ApiRequestError(Exception):
-    pass
+class OpenStackApiError(Exception):
+    def __str__(self):
+        return json.dumps(self.message, indent=4)
 
 class TimeoutError(Exception):
     pass
@@ -175,7 +176,7 @@ def get_user_info(auth_url, login, password, tenant_name):
 
     if r.status_code not in [requests.status_codes.codes.ok,
                              requests.status_codes.codes.accepted]:
-        raise ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
+        raise OpenStackApiError(r.json())
 
     return r.json()
 
