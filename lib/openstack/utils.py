@@ -199,7 +199,7 @@ def get_service_catalog(services_list, region_name):
     return catalog
 
 @with_timeout(120)
-def wait_deletion_for(session, instance_name):
+def wait_till_deleted(session, instance_name):
     """Waits for instance deletion."""
     while session.get_instance_info(instance_name):
         time.sleep(1)
