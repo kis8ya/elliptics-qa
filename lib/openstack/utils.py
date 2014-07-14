@@ -193,11 +193,8 @@ def get_service_catalog(services_list, region_name):
 @with_timeout
 def wait_deletion_for(session, instance_name):
     """Waits for instance deletion."""
-    while True:
-        try:
-            info = session.get_instance_info(instance_name)
-            if info is None:
-                return
+    try:
+        while session.get_instance_info(instance_name):
             time.sleep(1)
-        except OpenStackApiError:
-            return
+    except OpenStackApiError:
+        pass
