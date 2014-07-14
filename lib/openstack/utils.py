@@ -54,10 +54,11 @@ def with_timeout(timeout=300):
             # to 5 minutes
             signal.alarm(timeout)
 
-            result = func(*args, **kwargs)
-
-            # turn off timer when the function processed
-            signal.alarm(0)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                # turn off timer when the function processed
+                signal.alarm(0)
 
             return result
         return decorator
