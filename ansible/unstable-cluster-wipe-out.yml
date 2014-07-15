@@ -1,0 +1,19 @@
+---
+- hosts: servers
+  sudo: yes
+  tasks:
+    - name: Getting process id
+      shell: pgrep dnet_ioserv
+      register: pgrep
+      ignore_errors: yes
+
+    - name: Stop Elliptics
+      shell: kill {{ item }}
+      with_items: pgrep.stdout.splitlines()
+
+    - name: Wait for Elliptics to stop
+      shell: while [ -e /proc/{{ item }} ]; do sleep 0.1; done
+      with_items: pgrep.stdout.splitlines()
+
+    - name: Wipe out elliptics artifacts
+      file: path={{ elliptics_dir }} state=absent
