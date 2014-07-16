@@ -148,7 +148,7 @@ class EllipticsTestHelper(elliptics.Session):
                                                                        rule=rule)
             subprocess.call(shlex.split(cmd))
             print(cmd)
-            self.dropped_nodes.append(node)
+        self.dropped_nodes.append(node)
 
     def resume_node(self, node):
         """ Unlocks a node for elliptics requests
@@ -158,13 +158,14 @@ class EllipticsTestHelper(elliptics.Session):
             cmd = "ssh -q root@{host} iptables --delete {rule}".format(host=node.host,
                                                                        rule=rule)
             subprocess.call(shlex.split(cmd))
-            self.dropped_nodes.remove(node)
+            print(cmd)
 
     def resume_all_nodes(self):
         """ Unlocks all nodes for elliptics requests
         """
         for node in self.dropped_nodes:
             self.resume_node(node)
+        self.dropped_nodes = []
 
     # Synchronous versions for Elliptics commands
     def write_data_sync(self, key, data, offset=0, chunk_size=0):
