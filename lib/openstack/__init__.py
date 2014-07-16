@@ -4,60 +4,61 @@ import base64
 import json
 import time
 import socket
+import os
 
 import utils
 
 class Session:
-    __USER_DATA = """#cloud-config
-apt_preserve_sources_list: true
-"""
-
-    def __init__(self,
-                 login=utils.os_login,
-                 password=utils.os_password,
-                 tenant_name=utils.os_tenant_name):
-        self.tenant_name = tenant_name
-        info = self.get_user_info(login, password)
-        self.token_id = info['access']['token']['id']
-        self.tenant_id = info['access']['token']['tenant']['id']
+    def __init__(self, auth_url=None, login=None, password=None,
+                 tenant_name=None, region_name=None, hostname_prefix=None):
+        auth_url = auth_url or os.environ.get('OS_AUTH_URL')
+        login = login or os.environ.get('OS_USERNAME')
+        self.password = password or os.environ.get('OS_PASSWORD')
+        region_name = region_name or os.environ.get('OS_REGION_NAME')
+        tenant_name = tenant_name or os.environ.get('OS_TENANT_NAME')
+        self.hostname_prefix = hostname_prefix or os.environ.get('OS_HOSTNAME_PREFIX')
+        user_info = utils.get_user_info(auth_url, login, self.password, tenant_name)
+        # Collect authorization token
+        self.token_id = user_info['access']['token']['id']
+        # Collect services' endpoints
+        self.service_catalog = utils.get_service_catalog(user_info['access']['serviceCatalog'],
+                                                         region_name)
 
     def get(self, url):
         headers = {'Accept': "application/json",
-                   'X-Auth-Project-Id': self.tenant_name,
                    'X-Auth-Token': self.token_id}
 
         r = requests.get(url, headers=headers, timeout=utils.TIMEOUT)
 
         if r.status_code != requests.status_codes.codes.ok:
-            raise utils.ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
-        
+            raise utils.OpenStackApiError(r.json(), r.status_code)
+
         return r.json()
 
     def post(self, url, data):
-        headers = {'Content-Type': "application/json",
-                   'Accept': "application/json"}
-        if hasattr(self, 'token_id'):
-            headers['X-Auth-Project-Id'] = self.tenant_name
-            headers['X-Auth-Token'] = self.token_id
+        headers = {
+            'Content-Type': "application/json",
+            'Accept': "application/json",
+            'X-Auth-Token': self.token_id
+        }
 
         r = requests.post(url, data=json.dumps(data), headers=headers, timeout=utils.TIMEOUT)
 
         if r.status_code not in [requests.status_codes.codes.ok,
                                  requests.status_codes.codes.accepted]:
-            raise utils.ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
+            raise utils.OpenStackApiError(r.json(), r.status_code)
         
         return r.json()
 
     def delete(self, url):
         headers = {'Content-Type': "application/json",
                    'Accept': "application/json",
-                   'X-Auth-Project-Id': self.tenant_name,
                    'X-Auth-Token': self.token_id}
 
         r = requests.delete(url, headers=headers, timeout=utils.TIMEOUT)
 
         if r.status_code != 204:
-            raise utils.ApiRequestError('Status code: {0}.\n{1}'.format(r.status_code, r.json()))
+            raise utils.OpenStackApiError(r.json(), r.status_code)
 
     def create_instances(self, config, check=True):
         # Waiting for DNS records update
@@ -108,7 +109,7 @@ apt_preserve_sources_list: true
         """ Creates instance
         """
         data = self._get_data_from_config(data)
-        url = utils.get_url("SERVERS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "SERVERS")
 
         instance_info = self.post(url, data)
 
@@ -123,7 +124,8 @@ apt_preserve_sources_list: true
         else:
             instance_id = instance_info['id']
 
-        url = utils.get_url("SERVERS_SERVER", tenant_id=self.tenant_id, instance_id=instance_id)
+        url = utils.get_url(self.service_catalog['compute'], "SERVERS_SERVER",
+                            instance_id=instance_id)
 
         self.delete(url)
 
@@ -141,51 +143,33 @@ apt_preserve_sources_list: true
 
         data = {"rebuild": {"name": instance_name,
                             "imageRef": image_ref,
-                            "adminPass": utils.os_password}}
+                            "adminPass": self.password}}
 
-        url = utils.get_url("ACTION", tenant_id=self.tenant_id, server_id=instance_id)
+        url = utils.get_url(self.service_catalog['compute'], "ACTION",
+                            server_id=instance_id)
 
         response = self.post(url, data)
 
         return response
 
-    def get_user_info(self, login=utils.os_login, password=utils.os_password):
-        """ Returns information about user
-        """
-        url = utils.get_url("TOKENS", "IDENTITY")
-
-        data = {
-            'auth': {
-                'tenantName': self.tenant_name,
-                'passwordCredentials': {
-                    'username': login,
-                    'password': password
-                    }
-                }
-            }
-
-        info = self.post(url, data)
-
-        return info
-
     def get_images_list(self):
         """ Returns list of images
         """
-        url = utils.get_url("IMAGES", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "IMAGES")
         images_list = self.get(url)['images']
         return images_list
 
     def get_flavors_list(self):
         """ Returns list of flavors (CPU's, RAM, disk space)
         """
-        url = utils.get_url("FLAVORS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "FLAVORS")
         flavors_list = self.get(url)['flavors']
         return flavors_list
 
     def get_networks_list(self):
         """ Returns list of networks
         """
-        url = utils.get_url("NETWORKS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "NETWORKS")
         networks_list = self.get(url)['networks']
         return networks_list
 
@@ -221,7 +205,7 @@ apt_preserve_sources_list: true
                 "max_count": config['max_count'],
                 "min_count": config['min_count'],
                 "networks": self.get_networks_uuid_list(config['networks_label_list']),
-                "user_data": base64.b64encode(Session.__USER_DATA)
+                "user_data": base64.b64encode(utils.USER_DATA)
                 }
             }
 
@@ -235,12 +219,19 @@ apt_preserve_sources_list: true
         else:
             return None
                 
-        url = utils.get_url("SERVERS_SERVER", tenant_id=self.tenant_id, instance_id=instance_id)
-        instance = self.get(url)['server']
+        url = utils.get_url(self.service_catalog['compute'], "SERVERS_SERVER",
+                            instance_id=instance_id)
+        try:
+            instance = self.get(url)['server']
+        except utils.OpenStackApiError as e:
+            if e.response_code == requests.status_codes.codes.not_found:
+                return None
+            else:
+                raise
         
         return instance
 
     def get_instances(self):
-        url = utils.get_url("SERVERS", tenant_id=self.tenant_id)
+        url = utils.get_url(self.service_catalog['compute'], "SERVERS")
         instances = self.get(url)['servers']
         return instances

@@ -39,6 +39,7 @@ def create(instances_cfg):
                 icfg = {"servers": [icfg]}
 
                 session.delete_instance(instance_name)
+                openstack.utils.wait_till_deleted(session, instance_name)
                 session.create_instances(icfg, check=False)
 
     return openstack.utils.check_availability(session, instances)
