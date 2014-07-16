@@ -4,6 +4,7 @@
     apt-get
     install
     --assume-yes
+    --force-yes
     elliptics={{ elliptics_version }}
     elliptics-client={{ elliptics_version }}
     eblob={{ eblob_version }}
