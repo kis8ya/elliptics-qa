@@ -1,0 +1,47 @@
+---
+- hosts: all
+  sudo: yes
+  tasks:
+    - name: Perform 'apt-get update'
+      apt: update_cache=yes
+
+- hosts: all
+  roles:
+    - install-elliptics-from-repo
+
+- hosts: servers
+  sudo: yes
+  vars:
+    nodes: [1, 2, 3]
+  tasks:
+    - name: Create necessary directories
+      file:
+        path={{ elliptics_dir }}/{{ item[0] }}/{{ item[1] }}
+        state=directory
+      with_nested:
+        - ["{{ log_dir }}", "{{ data_dir }}", "{{ hist_dir }}", "{{ conf_dir }}"]
+        - nodes
+
+    - name: Copy prepared data
+      shell: cp -r {{ prepared_elliptics_dir }}/. {{ elliptics_dir }}
+      ignore_errors: yes
+
+    - name: Create Elliptics config file
+      template:
+        src=templates/unstable_elliptics.json.j2
+        dest={{ elliptics_dir }}/{{ conf_dir }}/{{ item }}/node.json
+      with_items: nodes
+
+    - name: Start Elliptics daemon
+      command: dnet_ioserv -c {{ elliptics_dir }}/{{ conf_dir }}/{{ item }}/node.json
+      with_items: nodes
+
+    - name: Wait for Elliptics to start up
+      pause: seconds=10
+
+    - name: Get id of all Elliptics processes
+      shell: pgrep dnet_ioserv
+      register: pgrep
+
+    - name: Check that all Elliptics processes is running
+      shell: "[ {{ pgrep.stdout.splitlines()|length }} -eq {{ nodes|length }} ]"

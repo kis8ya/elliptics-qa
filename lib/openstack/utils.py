@@ -63,7 +63,7 @@ def with_timeout(timeout=300):
         return decorator
     return wrapper
 
-@with_timeout
+@with_timeout()
 def wait_till_active(session, instances):
     """ Waits till instances will be in ACTIVE status
     (and returns a list of dicts {instance_name: ip})
@@ -87,7 +87,7 @@ def wait_till_active(session, instances):
         queue.appendleft(instance)
     return hosts_ip
 
-@with_timeout
+@with_timeout()
 def check_ssh_port(ip_list):
     """ Checks that instances' ssh ports are available
     """
@@ -101,7 +101,7 @@ def check_ssh_port(ip_list):
         # if it's not available yet then return the instance to the queue
         queue.appendleft(ip)
 
-@with_timeout
+@with_timeout()
 def check_host_name_resolving(hosts_ip):
     """ Checks that ip resolving returns the same ip
     (which one we got from OpenStack API)

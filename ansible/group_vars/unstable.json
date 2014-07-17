@@ -1,0 +1,8 @@
+{
+  "prepared_elliptics_dir": "/opt/prepared_elliptics_testing",
+  "elliptics_dir": "/opt/elliptics_testing",
+  "log_dir": "log",
+  "data_dir": "data",
+  "hist_dir": "history",
+  "conf_dir": "configs"
+}
