@@ -11,7 +11,12 @@ def pytest_addoption(parser):
                      help="Amount of bytes for a single file.")
     parser.addoption('--node', type='string', action='append', dest="nodes",
                      help="Elliptics node. Example: --node=hostname:port:group")
-    parser.addoption('--good-keys-path', dest="good_keys_path")
-    parser.addoption('--bad-keys-path', dest="bad_keys_path")
-    parser.addoption('--broken-keys-path', dest="broken_keys_path")
-    parser.addoption('--dropped-groups', dest="dropped_groups")
+    parser.addoption('--good-keys-path', dest="good_keys_path",
+                     help="Path to a file with a list of good keys (in JSON format).")
+    parser.addoption('--bad-keys-path', dest="bad_keys_path",
+                     help="Path to a file with a list of bad keys (in JSON format).")
+    parser.addoption('--broken-keys-path', dest="broken_keys_path",
+                     help="Path to a file with a list of broken keys (in JSON format).")
+    parser.addoption('--dropped-groups', dest="dropped_groups",
+                     help="Path to a file with a list of elliptics groups where bad keys "
+                     "will be recovered (in JSON format).")

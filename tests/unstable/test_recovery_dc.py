@@ -1,3 +1,58 @@
+"""Elliptics dc recovery tests.
+
+These tests are testing dc recovery for elliptics recovery script (`dnet_recovery`).
+Tests are using following types of keys:
+
+* good keys (accessible from all groups);
+* bad keys (accessible from several groups and will be recovered);
+* broken keys (accessible from several groups and will not be recovered).
+
+Running tests
+-------------
+
+The tests split up their functionality into two ways to run:
+
+1. Run tests when they will prepare all data on the run.
+1. Specify files with information about prepared data.
+
+Example of running tests with data preparation on the run (for more information
+see `py.test --help`):
+
+    PYTHONPATH=./lib py.test -v -s \
+    --node=server-1:1025:1 \
+    --node=server-1:1026:1 \
+    --node=server-1:1027:1 \
+    --node=server-2:1025:2 \
+    --node=server-2:1026:2 \
+    --node=server-2:1027:2 \
+    --node=server-3:1025:3 \
+    --node=server-3:1026:3 \
+    --node=server-3:1027:3 \
+    --good-files-number=70 \
+    --bad-files-number=100 \
+    --broken-files-number=50 \
+    --files-size=102400 \
+    tests/unstable/
+
+Example of running tests with prepared files with information about written data:
+
+    PYTHONPATH=./lib py.test -v -s \
+    --node=server-1:1025:1 \
+    --node=server-1:1026:1 \
+    --node=server-1:1027:1 \
+    --node=server-2:1025:2 \
+    --node=server-2:1026:2 \
+    --node=server-2:1027:2 \
+    --node=server-3:1025:3 \
+    --node=server-3:1026:3 \
+    --node=server-3:1027:3 \
+    --good-keys-path=./good_keys \
+    --bad-keys-path=./bad_keys \
+    --broken-keys-path=./broken_keys \
+    tests/unstable/
+
+"""
+
 import pytest
 import elliptics
 import subprocess
@@ -9,6 +64,7 @@ from hamcrest import assert_that, raises, calling, equal_to
 from test_helper.elliptics_testhelper import EllipticsTestHelper, nodes
 from test_helper.utils import get_sha1, get_key_and_data
 from test_helper.logging_tests import logger
+
 
 @pytest.fixture(scope='module')
 def client(nodes):
@@ -124,6 +180,7 @@ def dump_file(client, bad_keys):
 
 
 def test_dump_file(client, nodes, good_keys, bad_keys, broken_keys, dropped_groups, dump_file):
+    """Testing `dnet_recovery` with `--dump-file` option."""
     node = random.choice(nodes)
     cmd = ["dnet_recovery",
            "--remote", "{}:{}:2".format(node.host, node.port),
