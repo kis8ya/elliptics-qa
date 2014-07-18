@@ -59,7 +59,7 @@ import subprocess
 import random
 import json
 
-from hamcrest import assert_that, raises, calling, equal_to
+from hamcrest import assert_that, raises, calling, equal_to, described_as
 
 from test_helper.elliptics_testhelper import EllipticsTestHelper, nodes
 from test_helper.utils import get_sha1, get_key_and_data
@@ -196,20 +196,29 @@ def test_dump_file(client, nodes, good_keys, bad_keys, broken_keys, dropped_grou
     for k in bad_keys:
         for g in client.groups:
             result = client.read_data_from_groups_sync(k, [g])[0]
-            assert_that(k, equal_to(get_sha1(result.data)))
+            result_data_hash = get_sha1(result.data)
+            assert_that(k, described_as("The recovered data mismatch by sha1 hash: %0",
+                                        equal_to(result_data_hash),
+                                        result_data_hash))
 
     logger.info('Checking "good" keys...\n')
     for k in good_keys:
         for g in client.groups:
             result = client.read_data_from_groups_sync(k, [g])[0]
-            assert_that(k, equal_to(get_sha1(result.data)))
+            result_data_hash = get_sha1(result.data)
+            assert_that(k, described_as("The recovered data mismatch by sha1 hash: %0",
+                                        equal_to(result_data_hash),
+                                        result_data_hash))
 
     logger.info('Check "broken" keys...\n')
     available_groups = [g for g in client.groups if g not in dropped_groups]
     for k in broken_keys:
         for g in available_groups:
             result = client.read_data_from_groups_sync(k, [g])[0]
-            assert_that(k, equal_to(get_sha1(result.data)))
+            result_data_hash = get_sha1(result.data)
+            assert_that(k, described_as("The recovered data mismatch by sha1 hash: %0",
+                                        equal_to(result_data_hash),
+                                        result_data_hash))
 
     for k in broken_keys:
         for g in dropped_groups:
