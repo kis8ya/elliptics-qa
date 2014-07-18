@@ -176,29 +176,23 @@ def test_dump_file(session, nodes, good_keys, bad_keys, broken_keys, dropped_gro
     for k in bad_keys:
         for g in session.groups:
             result = session.read_data_from_groups(k, [g]).get()[0]
-            result_data_hash = get_sha1(result.data)
-            assert_that(k, described_as("The recovered data mismatch by sha1 hash: %0",
-                                        equal_to(result_data_hash),
-                                        result_data_hash))
+            assert_that(k, equal_to(get_sha1(result.data)),
+                        "The recovered data mismatch by sha1 hash")
 
     logger.info('Checking "good" keys...\n')
     for k in good_keys:
         for g in session.groups:
             result = session.read_data_from_groups(k, [g]).get()[0]
-            result_data_hash = get_sha1(result.data)
-            assert_that(k, described_as("After recovering the data mismatch by sha1 hash: %0",
-                                        equal_to(result_data_hash),
-                                        result_data_hash))
+            assert_that(k, equal_to(get_sha1(result.data)),
+                        "After recovering the data mismatch by sha1 hash")
 
     logger.info('Check "broken" keys...\n')
     available_groups = [g for g in session.groups if g not in dropped_groups]
     for k in broken_keys:
         for g in available_groups:
             result = session.read_data_from_groups(k, [g]).get()[0]
-            result_data_hash = get_sha1(result.data)
-            assert_that(k, described_as("After recovering the data mismatch by sha1 hash: %0",
-                                        equal_to(result_data_hash),
-                                        result_data_hash))
+            assert_that(k, equal_to(get_sha1(result.data)),
+                        "After recovering the data mismatch by sha1 hash")
 
     for k in broken_keys:
         for g in dropped_groups:
