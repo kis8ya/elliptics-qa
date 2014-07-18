@@ -9,8 +9,6 @@ def pytest_addoption(parser):
                      "and will not be recovered.")
     parser.addoption('--files-size', type='int', default=0, dest="files_size",
                      help="Amount of bytes for a single file.")
-    parser.addoption('--node', type='string', action='append', dest="nodes",
-                     help="Elliptics node. Example: --node=hostname:port:group")
     parser.addoption('--good-keys-path', dest="good_keys_path",
                      help="Path to a file with a list of good keys (in JSON format).")
     parser.addoption('--bad-keys-path', dest="bad_keys_path",
