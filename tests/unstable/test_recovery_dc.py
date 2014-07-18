@@ -192,7 +192,7 @@ def test_dump_file(client, nodes, good_keys, bad_keys, broken_keys, dropped_grou
         for g in client.groups:
             result = client.read_data_from_groups(k, [g]).get()[0]
             result_data_hash = get_sha1(result.data)
-            assert_that(k, described_as("The recovered data mismatch by sha1 hash: %0",
+            assert_that(k, described_as("After recovering the data mismatch by sha1 hash: %0",
                                         equal_to(result_data_hash),
                                         result_data_hash))
 
@@ -202,7 +202,7 @@ def test_dump_file(client, nodes, good_keys, bad_keys, broken_keys, dropped_grou
         for g in available_groups:
             result = client.read_data_from_groups(k, [g]).get()[0]
             result_data_hash = get_sha1(result.data)
-            assert_that(k, described_as("The recovered data mismatch by sha1 hash: %0",
+            assert_that(k, described_as("After recovering the data mismatch by sha1 hash: %0",
                                         equal_to(result_data_hash),
                                         result_data_hash))
 
