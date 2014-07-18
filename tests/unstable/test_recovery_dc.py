@@ -122,49 +122,35 @@ def good_keys(pytestconfig, client):
 
 
 @pytest.fixture(scope='function')
-def bad_keys(request, pytestconfig, client, dropped_groups):
+def bad_keys(pytestconfig, client, dropped_groups):
     """Returns list of "bad" keys."""
-    full_groups_list = client.groups
-
     if pytestconfig.option.bad_keys_path:
         bad_keys = json.load(open(pytestconfig.option.bad_keys_path))
         bad_keys = [str(k) for k in bad_keys]
     else:
+        restricted_client = client.clone()
         # "Bad" keys will be written in all groups except groups from dropped_groups
-        client.set_groups([g for g in full_groups_list if g not in dropped_groups])
-        bad_keys = write_files(client,
+        restricted_client.set_groups([g for g in restricted_client.groups if g not in dropped_groups])
+        bad_keys = write_files(restricted_client,
                                pytestconfig.option.bad_files_number,
                                pytestconfig.option.files_size)
-
-    def fin():
-        """Restores client's groups."""
-        client.set_groups(full_groups_list)
-
-    request.addfinalizer(fin)
 
     return bad_keys
 
 
 @pytest.fixture(scope='function')
-def broken_keys(request, pytestconfig, client, dropped_groups):
+def broken_keys(pytestconfig, client, dropped_groups):
     """Returns list of "broken" keys."""
-    full_groups_list = client.groups
-
     if pytestconfig.option.broken_keys_path:
         broken_keys = json.load(open(pytestconfig.option.broken_keys_path))
         broken_keys = [str(k) for k in broken_keys]
     else:
+        restricted_client = client.clone()
         # "Broken" keys will be written in all groups except groups from dropped_groups
-        client.set_groups([g for g in full_groups_list if g not in dropped_groups])
-        broken_keys = write_files(client,
+        restricted_client.set_groups([g for g in restricted_client.groups if g not in dropped_groups])
+        broken_keys = write_files(restricted_client,
                                   pytestconfig.option.broken_files_number,
                                   pytestconfig.option.files_size)
-
-    def fin():
-        """Restores client's groups."""
-        client.set_groups(full_groups_list)
-
-    request.addfinalizer(fin)
 
     return broken_keys
 
