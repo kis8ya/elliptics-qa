@@ -81,7 +81,7 @@ def write_files(client, files_number, file_size):
     for i in xrange(files_number):
         key, data = get_key_and_data(file_size, randomize_len=False)
 
-        client.write_data_sync(key, data)
+        client.write_data(key, data).wait()
         key_list.append(key)
         logger.info("\r{0}/{1}".format(i + 1, files_number))
 
@@ -195,7 +195,7 @@ def test_dump_file(client, nodes, good_keys, bad_keys, broken_keys, dropped_grou
     logger.info('Checking recovered keys...\n')
     for k in bad_keys:
         for g in client.groups:
-            result = client.read_data_from_groups_sync(k, [g])[0]
+            result = client.read_data_from_groups(k, [g]).get()[0]
             result_data_hash = get_sha1(result.data)
             assert_that(k, described_as("The recovered data mismatch by sha1 hash: %0",
                                         equal_to(result_data_hash),
@@ -204,7 +204,7 @@ def test_dump_file(client, nodes, good_keys, bad_keys, broken_keys, dropped_grou
     logger.info('Checking "good" keys...\n')
     for k in good_keys:
         for g in client.groups:
-            result = client.read_data_from_groups_sync(k, [g])[0]
+            result = client.read_data_from_groups(k, [g]).get()[0]
             result_data_hash = get_sha1(result.data)
             assert_that(k, described_as("The recovered data mismatch by sha1 hash: %0",
                                         equal_to(result_data_hash),
@@ -214,7 +214,7 @@ def test_dump_file(client, nodes, good_keys, bad_keys, broken_keys, dropped_grou
     available_groups = [g for g in client.groups if g not in dropped_groups]
     for k in broken_keys:
         for g in available_groups:
-            result = client.read_data_from_groups_sync(k, [g])[0]
+            result = client.read_data_from_groups(k, [g]).get()[0]
             result_data_hash = get_sha1(result.data)
             assert_that(k, described_as("The recovered data mismatch by sha1 hash: %0",
                                         equal_to(result_data_hash),
@@ -222,5 +222,6 @@ def test_dump_file(client, nodes, good_keys, bad_keys, broken_keys, dropped_grou
 
     for k in broken_keys:
         for g in dropped_groups:
-            assert_that(calling(client.read_data_from_groups_sync).with_args(k, [g]),
+            async_result = client.read_data_from_groups(k, [g])
+            assert_that(calling(async_result.wait),
                         raises(elliptics.NotFoundError))
