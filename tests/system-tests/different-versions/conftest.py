@@ -1,7 +1,6 @@
 import apt
 
 def pytest_addoption(parser):
-    parser.addoption("--node", action="append", dest="nodes")
     parser.addoption("--old-version", dest="old_version")
 
 def pytest_collection_modifyitems(config, items):
