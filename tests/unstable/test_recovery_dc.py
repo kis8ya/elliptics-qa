@@ -58,8 +58,10 @@ import elliptics
 import subprocess
 import random
 import json
+import os
 
-from hamcrest import assert_that, raises, calling, equal_to, described_as
+from collections import defaultdict
+from hamcrest import assert_that, raises, calling, equal_to, has_length
 
 from test_helper.elliptics_testhelper import EllipticsTestHelper, nodes
 from test_helper.utils import get_sha1, get_key_and_data
@@ -83,6 +85,44 @@ def write_files(session, files_number, file_size):
     return key_list
 
 
+def index_data_format(key, index):
+    """Returns index data for given key and index."""
+    return "{}_{}"
+
+
+def set_indexes(session, keys, indexes):
+    """Prepares secondary indexes.
+
+    Sets randomly chosen indexes for a given list of keys and
+    returns a dictionary with information about these indexes.
+
+    """
+    logger.info("Started setting indexes for {} keys...\n".format(len(keys)))
+
+    keys_indexes = defaultdict(list)
+    for i, key in enumerate(keys):
+        indexes_count = random.randint(0, len(indexes))
+        key_indexes = random.sample(indexes, indexes_count)
+        index_data = [index_data_format(key, index) for index in key_indexes]
+
+        session.set_indexes(key, key_indexes, index_data).wait()
+        keys_indexes[key].extend(key_indexes)
+
+        logger.info("\r{0}/{1}".format(i + 1, len(keys)))
+
+    logger.info("\nFinished setting indexes\n")
+
+    return keys_indexes
+
+
+@pytest.fixture(scope='module')
+def indexes():
+    """Returns randomly generated indexes."""
+    indexes_count = 5
+    index_length = 20
+    return [os.urandom(index_length) for i in xrange(indexes_count)]
+
+
 @pytest.fixture(scope='module')
 def dropped_groups(pytestconfig, session):
     """Returns a list of dropped groups.
@@ -102,7 +142,7 @@ def dropped_groups(pytestconfig, session):
 
 
 @pytest.fixture(scope='function')
-def good_keys(pytestconfig, session):
+def good_keys(pytestconfig, session, indexes):
     """Returns list of "good" keys."""
     if pytestconfig.option.good_keys_path:
         good_keys = json.load(open(pytestconfig.option.good_keys_path))
@@ -111,11 +151,12 @@ def good_keys(pytestconfig, session):
         good_keys = write_files(session,
                                 pytestconfig.option.good_files_number,
                                 pytestconfig.option.files_size)
+        good_keys = set_indexes(session, good_keys, indexes)
     return good_keys
 
 
 @pytest.fixture(scope='function')
-def bad_keys(pytestconfig, session, dropped_groups):
+def bad_keys(pytestconfig, session, dropped_groups, indexes):
     """Returns list of "bad" keys."""
     if pytestconfig.option.bad_keys_path:
         bad_keys = json.load(open(pytestconfig.option.bad_keys_path))
@@ -123,16 +164,18 @@ def bad_keys(pytestconfig, session, dropped_groups):
     else:
         restricted_session = session.clone()
         # "Bad" keys will be written in all groups except groups from dropped_groups
-        restricted_session.set_groups([g for g in restricted_session.groups if g not in dropped_groups])
+        restricted_session.set_groups([g for g in restricted_session.groups
+                                       if g not in dropped_groups])
         bad_keys = write_files(restricted_session,
                                pytestconfig.option.bad_files_number,
                                pytestconfig.option.files_size)
+        bad_keys = set_indexes(restricted_session, bad_keys, indexes)
 
     return bad_keys
 
 
 @pytest.fixture(scope='function')
-def broken_keys(pytestconfig, session, dropped_groups):
+def broken_keys(pytestconfig, session, dropped_groups, indexes):
     """Returns list of "broken" keys."""
     if pytestconfig.option.broken_keys_path:
         broken_keys = json.load(open(pytestconfig.option.broken_keys_path))
@@ -145,6 +188,7 @@ def broken_keys(pytestconfig, session, dropped_groups):
         broken_keys = write_files(restricted_session,
                                   pytestconfig.option.broken_files_number,
                                   pytestconfig.option.files_size)
+        broken_keys = set_indexes(restricted_session, broken_keys, indexes)
 
     return broken_keys
 
@@ -152,14 +196,60 @@ def broken_keys(pytestconfig, session, dropped_groups):
 @pytest.fixture(scope='function')
 def dump_file(session, bad_keys):
     """Writes id of keys to a dump file and returns the file name."""
-    ids = [str(session.transform(k)) for k in bad_keys]
+    ids = [str(session.transform(k)) for k in bad_keys.keys()]
     file_name = "id_dump"
     with open(file_name, "w") as f:
         f.write("\n".join(ids))
     return file_name
 
 
-def test_dump_file(session, nodes, good_keys, bad_keys, broken_keys, dropped_groups, dump_file):
+def check_indexes(session, indexes, good_keys, bad_keys, broken_keys, dropped_groups):
+    """Checks that secondary indexes correspond to given information about keys and their indexes.
+
+    It searches for the every index from given indexes list in every group.
+    Checks that all keys were found and checks key-index data.
+
+    """
+    logger.info('Check indexes...\n')
+    for index in indexes:
+        for group in session.groups:
+            restricted_session = session.clone()
+            restricted_session.set_groups([group])
+            
+            result_keys = restricted_session.find_all_indexes([index]).get()
+
+            # Get a list of all keys for the index that should be available in the group
+            expected_keys = [key for key, key_indexes in good_keys.items()
+                             if index in key_indexes]
+            expected_keys.extend([key for key, key_indexes in bad_keys.items()
+                                  if index in key_indexes])
+            if group not in dropped_groups:
+                expected_keys.extend([key for key, key_indexes in broken_keys.items()
+                                      if index in key_indexes])
+
+            for expected_key in expected_keys:
+                filtered_key = [result_key for result_key in result_keys
+                                if result_key.id == restricted_session.transform(expected_key)]
+                assert_that(filtered_key, has_length(1),
+                            'Expected key "{}" not found when was searching for index "{}" '
+                            'in group {}'.format(expected_key, index, group))
+
+                result_key = filtered_key[0]
+                filtered_index = [result_index for result_index in result_key.indexes
+                                  if result_index.index == restricted_session.transform(index)]
+                assert_that(filtered_index, has_length(1),
+                            'There is no index "{}" in key "{}" index list (but found this key '
+                            'when was searching by this index)'.format(index, expected_key))
+
+                result_index = filtered_index[0]
+                assert_that(result_index.data,
+                            equal_to(index_data_format(expected_key, index)),
+                            'Key-index (key = "{}", index = "{}") data mismatch in group {}'.format(
+                        expected_key, index, group))
+
+
+def test_dump_file(session, nodes, good_keys, bad_keys,
+                   broken_keys, dropped_groups, dump_file, indexes):
     """Testing `dnet_recovery` with `--dump-file` option."""
     node = random.choice(nodes)
     cmd = ["dnet_recovery",
@@ -173,14 +263,14 @@ def test_dump_file(session, nodes, good_keys, bad_keys, broken_keys, dropped_gro
     assert retcode == 0, "{} retcode = {}".format(cmd, retcode)
 
     logger.info('Checking recovered keys...\n')
-    for k in bad_keys:
+    for k in bad_keys.keys():
         for g in session.groups:
             result = session.read_data_from_groups(k, [g]).get()[0]
             assert_that(k, equal_to(get_sha1(result.data)),
                         "The recovered data mismatch by sha1 hash")
 
     logger.info('Checking "good" keys...\n')
-    for k in good_keys:
+    for k in good_keys.keys():
         for g in session.groups:
             result = session.read_data_from_groups(k, [g]).get()[0]
             assert_that(k, equal_to(get_sha1(result.data)),
@@ -188,14 +278,16 @@ def test_dump_file(session, nodes, good_keys, bad_keys, broken_keys, dropped_gro
 
     logger.info('Check "broken" keys...\n')
     available_groups = [g for g in session.groups if g not in dropped_groups]
-    for k in broken_keys:
+    for k in broken_keys.keys():
         for g in available_groups:
             result = session.read_data_from_groups(k, [g]).get()[0]
             assert_that(k, equal_to(get_sha1(result.data)),
                         "After recovering the data mismatch by sha1 hash")
 
-    for k in broken_keys:
+    for k in broken_keys.keys():
         for g in dropped_groups:
             async_result = session.read_data_from_groups(k, [g])
             assert_that(calling(async_result.wait),
                         raises(elliptics.NotFoundError))
+
+    check_indexes(session, indexes, good_keys, bad_keys, broken_keys, dropped_groups)
