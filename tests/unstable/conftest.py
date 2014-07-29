@@ -7,7 +7,7 @@ def pytest_addoption(parser):
     parser.addoption('--broken-files-number', type='int', default='127', dest="broken_files_number",
                      help="Amount of files to write which will be accessible from some groups "
                      "and will not be recovered.")
-    parser.addoption('--files-size', type='int', default=0, dest="files_size",
+    parser.addoption('--file-size', type='int', default=0, dest="file_size",
                      help="Amount of bytes for a single file.")
     parser.addoption('--good-keys-path', dest="good_keys_path",
                      help="Path to a file with a list of good keys (in JSON format).")
