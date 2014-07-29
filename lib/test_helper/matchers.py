@@ -61,3 +61,24 @@ class HasItems(BaseMatcher):
 def hasitems(*elements):
     """Custom has_items matcher with a short description."""
     return HasItems(*elements)
+
+
+class HasItem(BaseMatcher):
+    def __init__(self, element):
+        self.element = element
+
+    def matches(self, item, mismatch_description=None):
+        return self.element in item
+
+    def describe_to(self, description):
+        description.append_text("a sequence has the {0} element".format(self.element))
+
+    def describe_mismatch(self, item, mismatch_description):
+        mismatch_description.append_text("the element not in this sequence")
+
+
+def hasitem(element):
+    """Custom has_item matcher with a short description."""
+    return HasItem(element)
+
+
