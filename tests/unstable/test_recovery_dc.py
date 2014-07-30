@@ -63,7 +63,7 @@ import os
 from hamcrest import assert_that, raises, calling, equal_to
 
 from test_helper.elliptics_testhelper import nodes
-from test_helper.utils import get_sha1
+from test_helper.utils import get_sha1, get_testcases, get_testcases_names
 from test_helper.logging_tests import logger
 from test_helper.matchers import hasitem
 
@@ -97,12 +97,9 @@ def dropped_groups(pytestconfig, session):
     return groups
 
 
-recovery_dc_testcases = utils.get_testcases(testcases_recovery_dc)
-
-
 @pytest.fixture(scope='module',
-                params=recovery_dc_testcases,
-                ids=[case_func.__name__ for case_func in recovery_dc_testcases])
+                params=get_testcases("testcases_recovery_dc"),
+                ids=get_testcases_names("testcases_recovery_dc"))
 def recovery(pytestconfig, request, session, nodes, indexes, dropped_groups):
     """Returns an object with information about recovery operation."""
     recovery = {

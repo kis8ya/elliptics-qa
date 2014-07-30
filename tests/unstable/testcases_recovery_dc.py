@@ -29,18 +29,11 @@ def default_recovery(session, nodes, recovery):
     return result
 
 
-def _dump_keys_to_file(session, keys, file_path):
-    """Writes id of given keys to a dump file."""
-    ids = [str(session.transform(k)) for k in keys]
-    with open(file_path, "w") as dump_file:
-        dump_file.write("\n".join(ids))
-
-
 def recovery_with_dump_file_option(session, nodes, recovery):
     """Returns an object with specified information about recovery with `--dump-file` option."""
     result = copy.deepcopy(recovery)
     dump_file_path = "./dump_file"
-    _dump_keys_to_file(session, recovery["keys"]["bad"], dump_file_path)
+    utils.dump_keys_to_file(session, recovery["keys"]["bad"], dump_file_path)
     node = random.choice(nodes)
     result["cmd"] = ["dnet_recovery",
                      "--remote", "{}:{}:2".format(node.host, node.port),

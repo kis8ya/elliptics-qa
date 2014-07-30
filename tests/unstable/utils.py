@@ -7,17 +7,6 @@ from test_helper.logging_tests import logger
 from test_helper.utils import get_key_and_data
 
 
-def get_testcases(module):
-    """Returns testcases from given module (public functions from the module)."""
-    testcases = []
-    for func in module.__dict__.itervalues():
-        if inspect.isfunction(func) and \
-           inspect.getmodule(func) == module and \
-           not func.__name__.startswith("_"):
-            testcases.append(func)
-    return testcases
-
-
 def _write_files(session, files_number, file_size):
     """Writes files with preset session and specified files parameters: numbers and size."""
     logger.info("Started writing {} files\n".format(files_number))
@@ -189,3 +178,10 @@ def get_ranges_by_session(session, nodes):
                              node.port == address.port]
         ranges[filtered_hostname[0]] = Ranges(session.routes.get_address_ranges(address))
     return ranges
+
+
+def dump_keys_to_file(session, keys, file_path):
+    """Writes id of given keys to a dump file."""
+    ids = [str(session.transform(k)) for k in keys]
+    with open(file_path, "w") as dump_file:
+        dump_file.write("\n".join(ids))
