@@ -37,7 +37,7 @@ def _dump_keys_to_file(session, keys, file_path):
 
 
 def recovery_with_dump_file_option(session, nodes, recovery):
-    """Returns a command to run `dnet_recovery` with `--dump-file` option."""
+    """Returns an object with specified information about recovery with `--dump-file` option."""
     result = copy.deepcopy(recovery)
     dump_file_path = "./dump_file"
     _dump_keys_to_file(session, recovery["keys"]["bad"], dump_file_path)
@@ -51,7 +51,7 @@ def recovery_with_dump_file_option(session, nodes, recovery):
 
 
 def recovery_with_nprocess_option(session, nodes, recovery):
-    """Returns a command to run `dnet_recovery` with `--nprocess` option."""
+    """Returns an object with specified information about recovery with `--nprocess` option."""
     result = copy.deepcopy(recovery)
     node = random.choice(nodes)
     result["cmd"] = ["dnet_recovery",
@@ -65,7 +65,7 @@ def recovery_with_nprocess_option(session, nodes, recovery):
 
 
 def recovery_with_one_node_option(session, nodes, recovery):
-    """Returns a command to run `dnet_recovery` with `--one-node` option."""
+    """Returns an object with specified information about recovery with `--one-node` option."""
     result = copy.deepcopy(recovery)
     available_nodes = [node for node in nodes
                        if node.group not in recovery["dropped_groups"]]
