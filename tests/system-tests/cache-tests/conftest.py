@@ -6,10 +6,6 @@ import test_helper.elliptics_testhelper as et
 from test_helper.elliptics_testhelper import nodes
 
 
-def pytest_addoption(parser):
-    parser.addoption('--node', type='string', action='append', dest="nodes")
-
-
 @pytest.fixture(scope='function')
 def client(pytestconfig, nodes):
     """Prepares elliptics.Session object with elliptics.io_flags.cache."""
