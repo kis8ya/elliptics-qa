@@ -51,6 +51,9 @@ def recovery_with_dump_file_option(options, session, nodes, dropped_groups, inde
     broken_keys_number = int(len(keys["inconsistent"]) * options.broken_files_percentage)
     broken_keys = dict(keys["inconsistent"].items()[:broken_keys_number])
     bad_keys = dict(keys["inconsistent"].items()[broken_keys_number:])
+    # Remove indexes from bad keys - they will not be recovered
+    for key in bad_keys:
+        bad_keys[key] = set()
 
     result["keys"]["good"] = keys["consistent"]
     result["keys"]["bad"] = bad_keys
@@ -104,7 +107,8 @@ def recovery_with_one_node_option(options, session, nodes, dropped_groups, index
     for key, key_indexes in keys["inconsistent"].items():
         key_id = session.transform(key)
         if key_id in ranges[host]:
-            node_bad_keys[key] = key_indexes
+            # Remove indexes from bad keys - they will not be recovered
+            node_bad_keys[key] = set()
         else:
             node_broken_keys[key] = key_indexes
 
