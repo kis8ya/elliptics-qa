@@ -2,7 +2,7 @@ import pytest
 import socket
 import elliptics
 
-from hamcrest import assert_that, has_item, calling, raises
+from hamcrest import assert_that, has_item, calling, raises, has_length
 
 import test_helper.elliptics_testhelper as et
 from test_helper.logging_tests import logger
@@ -52,10 +52,11 @@ def test_new_client(old_nodes):
     """Testing that client (with new elliptics version)
     will not add nodes with old elliptics version
     """
-    assert_that(calling(et.EllipticsTestHelper).with_args(nodes=old_nodes,
-                                                          wait_timeout=5,
-                                                          check_timeout=30),
-                raises(elliptics.TimeoutError))
+    client = et.EllipticsTestHelper(nodes=old_nodes, wait_timeout=5, check_timeout=30)
+    client_nodes_addresses = client.get_routes().addresses()
+    assert_that(client_nodes_addresses, has_length(0),
+                "New client added old nodes (but he doesn't have to add them). "
+                "Addresses in routing table: {}".format(client_nodes_addresses))
 
 @pytest.mark.old_version
 def test_old_nodes(old_client, old_nodes):
