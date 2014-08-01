@@ -28,11 +28,11 @@ see `py.test --help`):
     --node=server-3:1025:3 \
     --node=server-3:1026:3 \
     --node=server-3:1027:3 \
-    --good-files-number=70 \
-    --bad-files-number=100 \
-    --broken-files-number=50 \
+    --consistent-files-number=20000 \
+    --inconsistent-files-number=5000 \
+    --broken-files-percentage=0.13 \
     --file-size=102400 \
-    tests/unstable/
+    tests/unstable/test_recovery_dc.py
 
 Example of running tests with prepared files with information about written data:
 
@@ -46,10 +46,11 @@ Example of running tests with prepared files with information about written data
     --node=server-3:1025:3 \
     --node=server-3:1026:3 \
     --node=server-3:1027:3 \
-    --good-keys-path=./good_keys \
-    --bad-keys-path=./bad_keys \
-    --broken-keys-path=./broken_keys \
-    tests/unstable/
+    --consistent-keys-path=./consistent_keys \
+    --inconsistent-keys-path=./inconsistent_keys \
+    --dropped-groups-path=./dropped_groups
+    --broken-files-percentage=0.15 \
+    tests/unstable/test_recovery_dc.py
 
 """
 
@@ -87,7 +88,7 @@ def dropped_groups(pytestconfig, session):
     "Bad" and "broken" keys will not be written to them.
 
     """
-    if pytestconfig.option.dropped_groups:
+    if pytestconfig.option.dropped_groups_path:
         groups = json.load(open(pytestconfig.option.dropped_groups))
     else:
         groups_count = len(session.groups)
@@ -102,32 +103,7 @@ def dropped_groups(pytestconfig, session):
                 ids=get_testcases_names("testcases_recovery_dc"))
 def recovery(pytestconfig, request, session, nodes, indexes, dropped_groups):
     """Returns an object with information about recovery operation."""
-    recovery = {
-        "cmd": None,
-        "exitcode": None,
-        "dropped_groups": dropped_groups,
-        "keys": {
-            "good": utils.get_good_keys(session,
-                                        pytestconfig.option.good_keys_path,
-                                        pytestconfig.option.good_files_number,
-                                        pytestconfig.option.file_size,
-                                        indexes),
-            "bad": utils.get_bad_keys(session,
-                                      pytestconfig.option.bad_keys_path,
-                                      pytestconfig.option.bad_files_number,
-                                      pytestconfig.option.file_size,
-                                      indexes,
-                                      dropped_groups),
-            "broken": utils.get_broken_keys(session,
-                                            pytestconfig.option.broken_keys_path,
-                                            pytestconfig.option.broken_files_number,
-                                            pytestconfig.option.file_size,
-                                            indexes,
-                                            dropped_groups)
-        }
-    }
-
-    recovery = request.param(session, nodes, recovery)
+    recovery = request.param(pytestconfig.option, session, nodes, dropped_groups, indexes)
     logger.info("{}\n".format(recovery["cmd"]))
 
     recovery["exitcode"] = subprocess.call(recovery["cmd"])
@@ -162,11 +138,11 @@ def test_recovered_keys(session, recovery):
                         "The recovered data mismatch by sha1 hash")
 
 
-def test_inconsistent_keys(session, recovery):
+def test_inconsistent_keys(session, recovery, dropped_groups):
     """Testing that after recovery operation keys, which were available in some specific groups,
     are still available in these groups and have correct data."""
     available_groups = [group for group in session.groups
-                        if group not in recovery["dropped_groups"]]
+                        if group not in dropped_groups]
     for key in recovery["keys"]["broken"]:
         for group in available_groups:
             result = session.read_data_from_groups(key, [group]).get()[0]
@@ -174,17 +150,17 @@ def test_inconsistent_keys(session, recovery):
                         "After recovering the data mismatch by sha1 hash")
 
 
-def test_inconsistent_keys_wrong_access(session, recovery):
+def test_inconsistent_keys_wrong_access(session, recovery, dropped_groups):
     """Testing that after recovery operation keys, which were available in some specific groups,
     are not available in other groups."""
     for key in recovery["keys"]["broken"]:
-        for group in recovery["dropped_groups"]:
+        for group in dropped_groups:
             async_result = session.read_data_from_groups(key, [group])
             assert_that(calling(async_result.wait),
                         raises(elliptics.NotFoundError))
 
 
-def test_indexes_return_all_available_keys(session, recovery, indexes):
+def test_indexes_return_all_available_keys(session, recovery, indexes, dropped_groups):
     """Testing that after recovery operation searching by indexes, which were not available
     in some groups before recovery operation, will return all keys for each index in each group."""
     for index in indexes:
@@ -195,14 +171,14 @@ def test_indexes_return_all_available_keys(session, recovery, indexes):
             result_keys = restricted_session.find_all_indexes([index]).get()
             result_keys_ids = [key.id for key in result_keys]
 
-            expected_keys = utils.get_expected_keys(recovery, group, index)
+            expected_keys = utils.get_expected_keys(recovery, group, index, dropped_groups)
             for expected_key in expected_keys:
                 assert_that(result_keys_ids, hasitem(session.transform(expected_key)),
                             'Expected key "{}" not found when was searching for index "{}" '
                             'in group {}'.format(expected_key, index, group))
 
 
-def test_indexes_have_expected_data(session, recovery, indexes):
+def test_indexes_have_expected_data(session, recovery, indexes, dropped_groups):
     """Testing that after recovery operation key-index data will be correct for all keys,
     which had to be recovered or were available before recovery operation."""
     for index in indexes:
@@ -210,7 +186,7 @@ def test_indexes_have_expected_data(session, recovery, indexes):
             restricted_session = session.clone()
             restricted_session.set_groups([group])
 
-            expected_keys = utils.get_expected_keys(recovery, group, index)
+            expected_keys = utils.get_expected_keys(recovery, group, index, dropped_groups)
             for expected_key in expected_keys:
                 key_indexes = restricted_session.list_indexes(expected_key).get()
                 filtered_data = [index_entry.data for index_entry in key_indexes

@@ -68,74 +68,47 @@ def _write_files_with_indexes(session, files_number, file_size, indexes):
     return keys
 
 
-def get_good_keys(session, good_keys_path, good_files_number, file_size, indexes):
-    """Returns "good" keys.
-
-    If file with good keys was specified then it will return keys from the file.
-    Otherwise it will write keys and return these keys.
-
-    """
-    if good_keys_path:
-        good_keys = _load_keys_from_file(good_keys_path)
+def _get_consistent_keys(options, session, indexes):
+    if options.consistent_keys_path:
+        consistent_keys = _load_keys_from_file(options.consistent_keys_path)
     else:
-        good_keys = _write_files_with_indexes(session,
-                                              good_files_number,
-                                              file_size,
-                                              indexes)
-    return good_keys
+        consistent_keys = _write_files_with_indexes(session,
+                                                    options.consistent_files_number,
+                                                    options.file_size,
+                                                    indexes)
+    return consistent_keys
 
 
-def get_bad_keys(session, bad_keys_path, bad_files_number,
-                 file_size, indexes, dropped_groups):
-    """Returns "bad" keys.
-
-    If file with bad keys was specified then it will return keys from the file.
-    Otherwise it will write keys and return these keys.
-
-    """
-    if bad_keys_path:
-        bad_keys = _load_keys_from_file(bad_keys_path)
+def _get_inconsistent_keys(options, session, dropped_groups, indexes):
+    if options.inconsistent_keys_path:
+        inconsistent_keys = _load_keys_from_file(options.inconsistent_keys_path)
     else:
         restricted_session = session.clone()
-        # "Bad" keys will be written in all groups except groups from dropped_groups
-        restricted_session.set_groups([g for g in restricted_session.groups
-                                       if g not in dropped_groups])
-        bad_keys = _write_files_with_indexes(restricted_session,
-                                             bad_files_number,
-                                             file_size,
-                                             indexes)
-    return bad_keys
+        # These keys will be written in all groups except groups from dropped_groups
+        restricted_session.set_groups([group for group in restricted_session.groups
+                                       if group not in dropped_groups])
+        inconsistent_keys = _write_files_with_indexes(restricted_session,
+                                                      options.inconsistent_files_number,
+                                                      options.file_size,
+                                                      indexes)
+    return inconsistent_keys
 
 
-def get_broken_keys(session, broken_keys_path, broken_files_number,
-                    file_size, indexes, dropped_groups):
-    """Returns "broken" keys.
-
-    If file with broken keys was specified then it will return keys from the file.
-    Otherwise it will write keys and return these keys.
-
-    """
-    if broken_keys_path:
-        broken_keys = _load_keys_from_file(broken_keys_path)
-    else:
-        restricted_session = session.clone()
-        # "Broken" keys will be written in all groups except groups from dropped_groups
-        restricted_session.set_groups([g for g in restricted_session.groups
-                                       if g not in dropped_groups])
-        broken_keys = _write_files_with_indexes(restricted_session,
-                                                broken_files_number,
-                                                file_size,
-                                                indexes)
-    return broken_keys
+def get_keys(options, session, dropped_groups, indexes):
+    keys = {
+        "consistent": _get_consistent_keys(options, session, indexes),
+        "inconsistent": _get_inconsistent_keys(options, session, dropped_groups, indexes)
+    }
+    return keys
 
 
-def get_expected_keys(recovery, group, index):
+def get_expected_keys(recovery, group, index, dropped_groups):
     """Returns a list of all keys for the index that should be available in the group."""
     expected_keys = [key for key, key_indexes in recovery["keys"]["good"].items()
                      if index in key_indexes]
     expected_keys.extend([key for key, key_indexes in recovery["keys"]["bad"].items()
                           if index in key_indexes])
-    if group not in recovery["dropped_groups"]:
+    if group not in dropped_groups:
         expected_keys.extend([key for key, key_indexes in recovery["keys"]["broken"].items()
                               if index in key_indexes])
     return expected_keys
