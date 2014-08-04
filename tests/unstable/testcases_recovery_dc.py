@@ -53,7 +53,7 @@ def recovery_with_dump_file_option(options, session, nodes, dropped_groups, inde
     result = copy.deepcopy(recovery_skeleton)
 
     keys = utils.get_keys(options, session, dropped_groups, indexes)
-    # Split inconsistent keys to "bad" and "broken" keys
+    # Split inconsistent keys: keys which will be recovered and keys which will not be
     inconsistent_keys_number = int(len(keys["inconsistent"]) * options.inconsistent_files_percentage)
     inconsistent_keys = dict(keys["inconsistent"].items()[:inconsistent_keys_number])
     recovered_keys = dict(keys["inconsistent"].items()[inconsistent_keys_number:])
