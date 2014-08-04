@@ -1,11 +1,6 @@
 """Elliptics dc recovery tests.
 
 These tests are testing dc recovery for elliptics recovery script (`dnet_recovery`).
-Tests are using following types of keys:
-
-* good keys (accessible from all groups);
-* bad keys (accessible from several groups and will be recovered);
-* broken keys (accessible from several groups and will not be recovered).
 
 Running tests
 -------------
@@ -30,7 +25,7 @@ see `py.test --help`):
     --node=server-3:1027:3 \
     --consistent-files-number=20000 \
     --inconsistent-files-number=5000 \
-    --broken-files-percentage=0.13 \
+    --inconsistent-files-percentage=0.13 \
     --file-size=102400 \
     tests/unstable/test_recovery_dc.py
 
@@ -49,7 +44,7 @@ Example of running tests with prepared files with information about written data
     --consistent-keys-path=./consistent_keys \
     --inconsistent-keys-path=./inconsistent_keys \
     --dropped-groups-path=./dropped_groups
-    --broken-files-percentage=0.15 \
+    --inconsistent-files-percentage=0.15 \
     tests/unstable/test_recovery_dc.py
 
 """
@@ -82,12 +77,7 @@ def indexes():
 
 @pytest.fixture(scope='module')
 def dropped_groups(pytestconfig, session):
-    """Returns a list of dropped groups.
-
-    There are only "good" keys will be accessible in these groups.
-    "Bad" and "broken" keys will not be written to them.
-
-    """
+    """Returns a list of dropped groups."""
     if pytestconfig.option.dropped_groups_path:
         groups = json.load(open(pytestconfig.option.dropped_groups))
     else:
@@ -102,7 +92,7 @@ def dropped_groups(pytestconfig, session):
                 params=get_testcases("testcases_recovery_dc"),
                 ids=get_testcases_names("testcases_recovery_dc"))
 def recovery(pytestconfig, request, session, nodes, indexes, dropped_groups):
-    """Returns an object with information about recovery operation."""
+    """Returns a structure of recovery's data."""
     recovery = request.param(pytestconfig.option, session, nodes, dropped_groups, indexes)
     logger.info("{}\n".format(recovery["cmd"]))
 
@@ -121,7 +111,7 @@ def test_exit_code(recovery):
 def test_consistent_keys(session, recovery):
     """Testing that after recovery operation keys, which were availabe in all groups,
     are still available in all groups and have correct data."""
-    for key in recovery["keys"]["good"]:
+    for key in recovery["keys"]["consistent"]:
         for group in session.groups:
             result = session.read_data_from_groups(key, [group]).get()[0]
             assert_that(key, equal_to(get_sha1(result.data)),
@@ -131,7 +121,7 @@ def test_consistent_keys(session, recovery):
 def test_recovered_keys(session, recovery):
     """Testing that after recovery operation keys, which had to be recovered,
     are recovered and have correct data."""
-    for key in recovery["keys"]["bad"]:
+    for key in recovery["keys"]["recovered"]:
         for group in session.groups:
             result = session.read_data_from_groups(key, [group]).get()[0]
             assert_that(key, equal_to(get_sha1(result.data)),
@@ -143,7 +133,7 @@ def test_inconsistent_keys(session, recovery, dropped_groups):
     are still available in these groups and have correct data."""
     available_groups = [group for group in session.groups
                         if group not in dropped_groups]
-    for key in recovery["keys"]["broken"]:
+    for key in recovery["keys"]["inconsistent"]:
         for group in available_groups:
             result = session.read_data_from_groups(key, [group]).get()[0]
             assert_that(key, equal_to(get_sha1(result.data)),
@@ -153,7 +143,7 @@ def test_inconsistent_keys(session, recovery, dropped_groups):
 def test_inconsistent_keys_wrong_access(session, recovery, dropped_groups):
     """Testing that after recovery operation keys, which were available in some specific groups,
     are not available in other groups."""
-    for key in recovery["keys"]["broken"]:
+    for key in recovery["keys"]["inconsistent"]:
         for group in dropped_groups:
             async_result = session.read_data_from_groups(key, [group])
             assert_that(calling(async_result.wait),

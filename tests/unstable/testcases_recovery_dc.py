@@ -1,9 +1,9 @@
 """Test cases for elliptics recovery dc tests.
 
-Functions from this module will be used to parameterize fixture
-for elliptics recovery dc tests. These functions return a structure
-of recovery's data. For more information about this structure see
-`recovery_skeleton` below.
+Functions from this module will be used to parameterize fixture for
+elliptics recovery dc tests. These functions return a structure of
+recovery's data (with these data we will check recovery operation).
+For more information about this structure see `recovery_skeleton` below.
 
 """
 
@@ -17,9 +17,12 @@ recovery_skeleton = {
     "cmd": None,
     "exitcode": None,
     "keys": {
-        "good": {},
-        "bad": {},
-        "broken": {}
+        # consistent keys are accessible from all groups
+        "consistent": {},
+        # recovered keys are keys which were accessible from several groups and were recovered
+        "recovered": {},
+        # inconsistent keys are keys which were accessible from several groups and were not recovered
+        "inconsistent": {}
     }
 }
 
@@ -30,8 +33,8 @@ def default_recovery(options, session, nodes, dropped_groups, indexes):
 
     keys = utils.get_keys(options, session, dropped_groups, indexes)
 
-    result["keys"]["good"] = keys["consistent"]
-    result["keys"]["bad"] = keys["inconsistent"]
+    result["keys"]["consistent"] = keys["consistent"]
+    result["keys"]["recovered"] = keys["inconsistent"]
 
     node = random.choice(nodes)
     result["cmd"] = ["dnet_recovery",
@@ -48,19 +51,19 @@ def recovery_with_dump_file_option(options, session, nodes, dropped_groups, inde
 
     keys = utils.get_keys(options, session, dropped_groups, indexes)
     # Split inconsistent keys to "bad" and "broken" keys
-    broken_keys_number = int(len(keys["inconsistent"]) * options.broken_files_percentage)
-    broken_keys = dict(keys["inconsistent"].items()[:broken_keys_number])
-    bad_keys = dict(keys["inconsistent"].items()[broken_keys_number:])
+    inconsistent_keys_number = int(len(keys["inconsistent"]) * options.inconsistent_files_percentage)
+    inconsistent_keys = dict(keys["inconsistent"].items()[:inconsistent_keys_number])
+    recovered_keys = dict(keys["inconsistent"].items()[inconsistent_keys_number:])
     # Remove indexes from bad keys - they will not be recovered
-    for key in bad_keys:
-        bad_keys[key] = set()
+    for key in recovered_keys:
+        recovered_keys[key] = set()
 
-    result["keys"]["good"] = keys["consistent"]
-    result["keys"]["bad"] = bad_keys
-    result["keys"]["broken"] = broken_keys
+    result["keys"]["consistent"] = keys["consistent"]
+    result["keys"]["recovered"] = recovered_keys
+    result["keys"]["inconsistent"] = inconsistent_keys
 
     dump_file_path = "./dump_file"
-    utils.dump_keys_to_file(session, result["keys"]["bad"], dump_file_path)
+    utils.dump_keys_to_file(session, result["keys"]["recovered"], dump_file_path)
     node = random.choice(nodes)
     result["cmd"] = ["dnet_recovery",
                      "--remote", "{}:{}:2".format(node.host, node.port),
@@ -89,22 +92,22 @@ def recovery_with_one_node_option(options, session, nodes, dropped_groups, index
     node = random.choice(available_nodes)
 
     keys = utils.get_keys(options, session, dropped_groups, indexes)
-    # Split inconsistent keys to "bad" and "broken" keys
+    # Split inconsistent keys to recovered and still inconsistent keys
     # depend on following condition: "is the key belong to chosen node?"
     ranges = utils.get_ranges_by_session(session, nodes)
     host = repr(node)
-    node_bad_keys = {}
-    node_broken_keys = {}
+    node_recovered_keys = {}
+    node_inconsistent_keys = {}
     for key, key_indexes in keys["inconsistent"].items():
         key_id = session.transform(key)
         if key_id in ranges[host]:
             # Remove indexes from bad keys - they will not be recovered
-            node_bad_keys[key] = set()
+            node_recovered_keys[key] = set()
         else:
-            node_broken_keys[key] = key_indexes
+            node_inconsistent_keys[key] = key_indexes
 
-    result["keys"]["bad"] = node_bad_keys
-    result["keys"]["broken"] = node_broken_keys
+    result["keys"]["recovered"] = node_recovered_keys
+    result["keys"]["inconsistent"] = node_inconsistent_keys
 
     result["cmd"] = ["dnet_recovery",
                      "--one-node", "{}:{}:2".format(node.host, node.port),
