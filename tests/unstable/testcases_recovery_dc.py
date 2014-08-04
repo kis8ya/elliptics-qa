@@ -108,6 +108,7 @@ def recovery_with_one_node_option(options, session, nodes, dropped_groups, index
         else:
             node_inconsistent_keys[key] = key_indexes
 
+    result["keys"]["consistent"] = keys["consistent"]
     result["keys"]["recovered"] = node_recovered_keys
     result["keys"]["inconsistent"] = node_inconsistent_keys
 
