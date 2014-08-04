@@ -17,6 +17,8 @@ import utils
 recovery_skeleton = {
     "cmd": None,
     "exitcode": None,
+    # flag to check "will indexes be recovered or not?"
+    "recovery_indexes": True,
     "keys": {
         # consistent keys are accessible from all groups
         "consistent": {},
@@ -55,13 +57,12 @@ def recovery_with_dump_file_option(options, session, nodes, dropped_groups, inde
     inconsistent_keys_number = int(len(keys["inconsistent"]) * options.inconsistent_files_percentage)
     inconsistent_keys = dict(keys["inconsistent"].items()[:inconsistent_keys_number])
     recovered_keys = dict(keys["inconsistent"].items()[inconsistent_keys_number:])
-    # Remove indexes from bad keys - they will not be recovered
-    for key in recovered_keys:
-        recovered_keys[key] = set()
 
     result["keys"]["consistent"] = keys["consistent"]
     result["keys"]["recovered"] = recovered_keys
     result["keys"]["inconsistent"] = inconsistent_keys
+
+    result["recovery_indexes"] = False
 
     dump_file_path = "./dump_file"
     utils.dump_keys_to_file(session, result["keys"]["recovered"], dump_file_path)
@@ -103,14 +104,15 @@ def recovery_with_one_node_option(options, session, nodes, dropped_groups, index
         key_node = session.lookup_address(key_id, node.group)
         if node_address == key_node.host and \
            node.port == key_node.port:
-            # Remove indexes from bad keys - they will not be recovered
-            node_recovered_keys[key] = set()
+            node_recovered_keys[key] = key_indexes
         else:
             node_inconsistent_keys[key] = key_indexes
 
     result["keys"]["consistent"] = keys["consistent"]
     result["keys"]["recovered"] = node_recovered_keys
     result["keys"]["inconsistent"] = node_inconsistent_keys
+
+    result["recovery_indexes"] = False
 
     result["cmd"] = ["dnet_recovery",
                      "--one-node", "{}:{}:2".format(node.host, node.port),

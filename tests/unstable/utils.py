@@ -107,7 +107,7 @@ def get_expected_keys(recovery, group, index, dropped_groups):
     expected_keys = [key for key, key_indexes in recovery["keys"]["consistent"].items()
                      if index in key_indexes]
     expected_keys.extend([key for key, key_indexes in recovery["keys"]["recovered"].items()
-                          if index in key_indexes])
+                          if index in key_indexes and recovery["recovery_indexes"]])
     if group not in dropped_groups:
         expected_keys.extend([key for key, key_indexes in recovery["keys"]["inconsistent"].items()
                               if index in key_indexes])
