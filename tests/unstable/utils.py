@@ -1,7 +1,5 @@
-import inspect
 import random
 import json
-import socket
 
 from test_helper.logging_tests import logger
 from test_helper.utils import get_key_and_data
