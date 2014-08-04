@@ -150,7 +150,7 @@ def test_inconsistent_keys_wrong_access(session, recovery, dropped_groups):
                         raises(elliptics.NotFoundError))
 
 
-def test_indexes_return_all_available_keys(session, recovery, indexes, dropped_groups):
+def test_indexes_searching(session, recovery, indexes, dropped_groups):
     """Testing that after recovery operation searching by indexes, which were not available
     in some groups before recovery operation, will return all keys for each index in each group."""
     for index in indexes:
@@ -168,7 +168,7 @@ def test_indexes_return_all_available_keys(session, recovery, indexes, dropped_g
                             'in group {}'.format(expected_key, index, group))
 
 
-def test_indexes_have_expected_data(session, recovery, indexes, dropped_groups):
+def test_key_index_data(session, recovery, indexes, dropped_groups):
     """Testing that after recovery operation key-index data will be correct for all keys,
     which had to be recovered or were available before recovery operation."""
     for index in indexes:
