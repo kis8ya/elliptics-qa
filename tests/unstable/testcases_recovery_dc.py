@@ -72,19 +72,10 @@ def recovery_with_dump_file_option(options, session, nodes, dropped_groups, inde
 
 def recovery_with_nprocess_option(options, session, nodes, dropped_groups, indexes):
     """Test case for recovery with `--nprocess` option."""
-    result = copy.deepcopy(recovery_skeleton)
+    result = default_recovery(options, session, nodes, dropped_groups, indexes)
 
-    keys = utils.get_keys(options, session, dropped_groups, indexes)
-
-    result["keys"]["good"] = keys["consistent"]
-    result["keys"]["bad"] = keys["inconsistent"]
-
-    node = random.choice(nodes)
-    result["cmd"] = ["dnet_recovery",
-                     "--remote", "{}:{}:2".format(node.host, node.port),
-                     "--groups", ','.join([str(g) for g in session.groups]),
-                     "--nprocess", "3",
-                     "dc"]
+    # adding --nprocess option to default recovery command
+    result["cmd"].extend(["--nprocess", "3"])
 
     return result
 
