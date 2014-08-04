@@ -114,45 +114,6 @@ def get_expected_keys(recovery, group, index, dropped_groups):
     return expected_keys
 
 
-class Range(object):
-    """Range of elliptics id."""
-    def __init__(self, couple):
-        self.left = couple[0]
-        self.right = couple[1]
-
-    def __contains__(self, item):
-        return self.left <= item < self.right
-
-
-class Ranges(object):
-    """Ranges for the following check: *is these ranges contains specified elliptics.Id*."""
-    def __init__(self, ranges_list):
-        self.ranges = []
-        for couple in ranges_list:
-            self.ranges.append(Range(couple))
-
-    def __contains__(self, item):
-        return any(item in r for r in self.ranges)
-
-
-def get_ranges_by_session(session, nodes):
-    """Returns ranges of elliptics id as dictionary:
-
-    {
-      repr(server-1): <ranges of elliptics id for server-1>,
-      ...
-    }
-
-    """
-    ranges = {}
-    for address in session.routes.addresses():
-        filtered_hostname = [repr(node) for node in nodes
-                             if socket.gethostbyname(node.host) == address.host and
-                             node.port == address.port]
-        ranges[filtered_hostname[0]] = Ranges(session.routes.get_address_ranges(address))
-    return ranges
-
-
 def dump_keys_to_file(session, keys, file_path):
     """Writes id of given keys to a dump file."""
     ids = [str(session.transform(k)) for k in keys]

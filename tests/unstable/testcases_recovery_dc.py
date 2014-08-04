@@ -9,6 +9,7 @@ For more information about this structure see `recovery_skeleton` below.
 
 import random
 import copy
+import socket
 
 import utils
 
@@ -94,13 +95,14 @@ def recovery_with_one_node_option(options, session, nodes, dropped_groups, index
     keys = utils.get_keys(options, session, dropped_groups, indexes)
     # Split inconsistent keys to recovered and still inconsistent keys
     # depend on following condition: "is the key belong to chosen node?"
-    ranges = utils.get_ranges_by_session(session, nodes)
-    host = repr(node)
+    node_address = socket.gethostbyname(node.host)
     node_recovered_keys = {}
     node_inconsistent_keys = {}
     for key, key_indexes in keys["inconsistent"].items():
         key_id = session.transform(key)
-        if key_id in ranges[host]:
+        key_node = session.lookup_address(key_id, node.group)
+        if node_address == key_node.host and \
+           node.port == key_node.port:
             # Remove indexes from bad keys - they will not be recovered
             node_recovered_keys[key] = set()
         else:
