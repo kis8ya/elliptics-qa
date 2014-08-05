@@ -16,6 +16,7 @@
       retries: 3
       delay: 10
       with_items:
+        - setuptools
         - pytest
         - pytest-xdist
         - pytest-timeout
