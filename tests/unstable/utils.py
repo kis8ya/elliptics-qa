@@ -104,8 +104,11 @@ def get_expected_keys(recovery, group, index, dropped_groups):
     """Returns a list of all keys for the index that should be available in the group."""
     expected_keys = [key for key, key_indexes in recovery["keys"]["consistent"].items()
                      if index in key_indexes]
+    # add recovered keys if their indexes were recovered or we are checking indexes in group
+    # which was available and had indexes before recovery operation
     expected_keys.extend([key for key, key_indexes in recovery["keys"]["recovered"].items()
-                          if index in key_indexes and recovery["recovery_indexes"]])
+                          if index in key_indexes and
+                          (recovery["recovery_indexes"] or group not in dropped_groups)])
     if group not in dropped_groups:
         expected_keys.extend([key for key, key_indexes in recovery["keys"]["inconsistent"].items()
                               if index in key_indexes])
