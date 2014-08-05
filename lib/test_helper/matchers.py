@@ -5,6 +5,7 @@ from hamcrest import has_properties, has_property, equal_to, greater_than_or_equ
 
 from test_helper.utils import get_sha1
 
+
 class WithSameSha1As(BaseMatcher):
     def __init__(self, data):
         self.expected_sha1 = get_sha1(data)
@@ -20,9 +21,11 @@ class WithSameSha1As(BaseMatcher):
     def describe_mismatch(self, item, mismatch_description):
         mismatch_description.append_text(get_sha1(str(item)))
 
+
 def with_same_sha1_as(data):
     """Matches if item has the same sha1 hash."""
     return WithSameSha1As(data)
+
 
 def elliptics_result_with(error_code, timestamp, user_flags, data):
     """Matches if elliptics async_result meets the following conditions:
@@ -36,6 +39,7 @@ def elliptics_result_with(error_code, timestamp, user_flags, data):
                           'timestamp', greater_than_or_equal_to(timestamp),
                           'user_flags', equal_to(user_flags),
                           'data', with_same_sha1_as(data))
+
 
 class HasItems(BaseMatcher):
     def __init__(self, *elements):
@@ -58,9 +62,30 @@ class HasItems(BaseMatcher):
         mismatch_description.append_text("got {0} elements difference ([{1}...])"\
                                              .format(len(self.diff), ', '.join(sample)))
 
+
 def hasitems(*elements):
     """Custom has_items matcher with a short description."""
     return HasItems(*elements)
+
+
+class HasItem(BaseMatcher):
+    def __init__(self, element):
+        self.element = element
+
+    def matches(self, item, mismatch_description=None):
+        return self.element in item
+
+    def describe_to(self, description):
+        description.append_text("a sequence has the {0} element".format(self.element))
+
+    def describe_mismatch(self, item, mismatch_description):
+        mismatch_description.append_text("the element not in this sequence")
+
+
+def hasitem(element):
+    """Custom has_item matcher with a short description."""
+    return HasItem(element)
+
 
 class RaisesEllipticsError(BaseMatcher):
     def __init__(self, expected, exc_code=None):
@@ -91,6 +116,7 @@ class RaisesEllipticsError(BaseMatcher):
 
     def describe_mismatch(self, item, description):
         description.append_text(self.mismatch_description)
+
 
 def raises_elliptics_error(exception, exc_code):
     """Matches if the called function raised the expected exception with correct code."""

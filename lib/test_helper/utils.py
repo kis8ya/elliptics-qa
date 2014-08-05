@@ -2,6 +2,8 @@
 
 import hashlib
 import random
+import inspect
+import importlib                                                                          
 
 from os import urandom
 
@@ -55,3 +57,15 @@ class Node(object):
 
     def __repr__(self):
         return "Node({0}, {1}, {2})".format(self.host, self.port, self.group)
+
+def _get_testcases_items(testcases_module_name):
+    testcases_module = importlib.import_module(testcases_module_name)
+    for func_name, func in inspect.getmembers(testcases_module, inspect.isfunction):
+        if inspect.getmodule(func) == testcases_module:
+            yield func_name, func
+
+def get_testcases(testcases_module_name):
+    return [testcase for _, testcase in _get_testcases_items(testcases_module_name)]
+
+def get_testcases_names(testcases_module_name):
+    return [testcase_name for testcase_name, _ in _get_testcases_items(testcases_module_name)]
