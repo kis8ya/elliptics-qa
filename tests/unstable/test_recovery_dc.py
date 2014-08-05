@@ -64,7 +64,6 @@ from test_helper.logging_tests import logger
 from test_helper.matchers import hasitem
 
 import utils
-import testcases_recovery_dc
 
 
 @pytest.fixture(scope='module')
