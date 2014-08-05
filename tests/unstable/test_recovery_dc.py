@@ -91,7 +91,7 @@ def dropped_groups(pytestconfig, session):
                 params=get_testcases("testcases_recovery_dc"),
                 ids=get_testcases_names("testcases_recovery_dc"))
 def recovery(pytestconfig, request, session, nodes, indexes, dropped_groups):
-    """Returns a structure of recovery's data."""
+    """Returns a structure of recovery data."""
     recovery = request.param(pytestconfig.option, session, nodes, dropped_groups, indexes)
     logger.info("{}\n".format(recovery["cmd"]))
 

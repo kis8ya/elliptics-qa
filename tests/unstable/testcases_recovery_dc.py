@@ -2,8 +2,8 @@
 
 Functions from this module will be used to parameterize fixture for
 elliptics recovery dc tests. These functions return a structure of
-recovery's data (with these data we will check recovery operation).
-For more information about this structure see `recovery_skeleton` below.
+recovery data (with these data we will check recovery operation). For
+more information about this structure see `recovery_skeleton` below.
 
 """
 
