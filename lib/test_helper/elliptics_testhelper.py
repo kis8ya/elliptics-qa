@@ -118,8 +118,9 @@ class EllipticsTestHelper(elliptics.Session):
             config.check_timeout = check_timeout
 
         client_node = elliptics.Node(elog, config)
-        for node in nodes:
-            client_node.add_remote(node.host, node.port, socket.AF_INET)
+        addresses = [elliptics.Address(node.host, node.port, socket.AF_INET)
+                     for node in nodes]
+        client_node.add_remotes(addresses)
 
         elliptics.Session.__init__(self, client_node)
 
