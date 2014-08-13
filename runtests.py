@@ -240,7 +240,7 @@ class TestRunner(object):
                 opts = '--teamcity'
             else:
                 opts = ''
-            opts += ' -d --tx ssh="{0}{1} -l root -q" {2} tests/{3}/'
+            opts += ' -rs -d --tx ssh="{0}{1} -l root -q" {2} tests/{3}/'
 
             opts = opts.format(client_name,
                                self.os_hostname_prefix,

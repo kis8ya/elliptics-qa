@@ -138,6 +138,8 @@ def test_quorum_checker_negative(quorum_checker_negative):
 @pytest.fixture(scope='function')
 def client_shuffling_off(pytestconfig, nodes):
     """Prepares elliptics session with cleared groups shuffling flag"""
+    pytest.skip("Test should be updated for Elliptics v2.26.")
+
     config = elliptics.Config()
     config.flags &= ~elliptics.config_flags.mix_stats
 

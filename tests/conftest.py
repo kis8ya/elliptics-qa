@@ -36,8 +36,9 @@ def session(pytestconfig, nodes):
         config.check_timeout = pytestconfig.option.check_timeout
 
     client_node = elliptics.Node(elog, config)
-    for node in nodes:
-        client_node.add_remote(node.host, node.port, socket.AF_INET)
+    addresses = [elliptics.Address(node.host, node.port, socket.AF_INET)
+                 for node in nodes]
+    client_node.add_remotes(addresses)
 
     elliptics_session = elliptics.Session(client_node)
 
