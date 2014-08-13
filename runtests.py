@@ -211,9 +211,15 @@ class TestRunner(object):
 
     def setup(self, test_name):
         test = self.tests[test_name]
-        # Do prerequisite steps for a test
-        ansible_manager.run_playbook(self.abspath(test["test_env_cfg"]["setup_playbook"]),
-                                     self.get_inventory_path(test_name))
+
+        playbook = self.abspath(test["test_env_cfg"]["setup_playbook"])
+        inventory = self.get_inventory_path(test_name)
+        try:
+            # Do prerequisite steps for a test
+            ansible_manager.run_playbook(playbook, inventory)
+        except ansible_manager.AnsiblePlaybookError:
+            exc_info = traceback.format_exc()
+            raise TestError("Setup for test {} raised exception: {}".format(test_name, exc_info))
 
         # Check if it's a pytest test
         if "dir" in test:
@@ -227,7 +233,7 @@ class TestRunner(object):
         try:
             ansible_manager.run_playbook(self.abspath(self.tests[test_name]["playbook"]),
                                          self.get_inventory_path(test_name))
-        except RuntimeError as exc:
+        except ansible_manager.AnsiblePlaybookError as exc:
             self.logger.error(exc.message)
             return False
         return True
@@ -267,30 +273,26 @@ class TestRunner(object):
             return False
 
     def teardown(self, test_name):
-        # Do clean-up steps for a test
-        ansible_manager.run_playbook(self.abspath(self.tests[test_name]["test_env_cfg"]["teardown_playbook"]),
-                                     self.get_inventory_path(test_name))
+        playbook = self.abspath(self.tests[test_name]["test_env_cfg"]["teardown_playbook"])
+        inventory = self.get_inventory_path(test_name)
+        try:
+            # Do clean-up steps for a test
+            ansible_manager.run_playbook(playbook, inventory)
+        except ansible_manager.AnsiblePlaybookError:
+            exc_info = traceback.format_exc()
+            raise TestError("Teardown for test {} raised exception: {}".format(test_name, exc_info))
+
 
     def run_tests(self):
         testsfailed = 0
         for test_name, test_cfg in self.tests.items():
             with teamcity_messages.block("TEST: {0}".format(test_name)):
-                try:
-                    self.setup(test_name)
-                except:
-                    exc_info = traceback.format_exc()
-                    raise TestError("Setup for test {} raised exception: {}".format(test_name,
-                                                                                    exc_info))
+                self.setup(test_name)
                     
                 if not self.run(test_name):
                     testsfailed += 1
 
-                try:
-                    self.teardown(test_name)
-                except:
-                    exc_info = traceback.format_exc()
-                    raise TestError("Teardown for test {} raised exception: {}".format(test_name,
-                                                                                       exc_info))
+                self.teardown(test_name)
         if testsfailed:
             return False
         else:
