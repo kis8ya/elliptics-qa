@@ -6,6 +6,7 @@ import pytest
 import os
 import subprocess
 import shlex
+import socket
 
 import utils
 
@@ -118,7 +119,7 @@ class EllipticsTestHelper(elliptics.Session):
 
         client_node = elliptics.Node(elog, config)
         for node in nodes:
-            client_node.add_remote(node.host, node.port)
+            client_node.add_remote(node.host, node.port, socket.AF_INET)
 
         elliptics.Session.__init__(self, client_node)
 
