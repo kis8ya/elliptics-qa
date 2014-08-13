@@ -78,6 +78,9 @@ def setup_loggers(teamcity, verbose):
         parser.write(conf)
 #END of util functions
 
+class TestError(Exception):
+    pass
+
 class TestRunner(object):
     def __init__(self, args):
         repo_dir = os.path.dirname(os.path.abspath(__file__))
@@ -208,9 +211,15 @@ class TestRunner(object):
 
     def setup(self, test_name):
         test = self.tests[test_name]
-        # Do prerequisite steps for a test
-        ansible_manager.run_playbook(self.abspath(test["test_env_cfg"]["setup_playbook"]),
-                                     self.get_inventory_path(test_name))
+
+        playbook = self.abspath(test["test_env_cfg"]["setup_playbook"])
+        inventory = self.get_inventory_path(test_name)
+        try:
+            # Do prerequisite steps for a test
+            ansible_manager.run_playbook(playbook, inventory)
+        except ansible_manager.AnsiblePlaybookError:
+            exc_info = traceback.format_exc()
+            raise TestError("Setup for test {} raised exception: {}".format(test_name, exc_info))
 
         # Check if it's a pytest test
         if "dir" in test:
@@ -224,7 +233,7 @@ class TestRunner(object):
         try:
             ansible_manager.run_playbook(self.abspath(self.tests[test_name]["playbook"]),
                                          self.get_inventory_path(test_name))
-        except RuntimeError as exc:
+        except ansible_manager.AnsiblePlaybookError as exc:
             self.logger.error(exc.message)
             return False
         return True
@@ -264,17 +273,25 @@ class TestRunner(object):
             return False
 
     def teardown(self, test_name):
-        # Do clean-up steps for a test
-        ansible_manager.run_playbook(self.abspath(self.tests[test_name]["test_env_cfg"]["teardown_playbook"]),
-                                     self.get_inventory_path(test_name))
+        playbook = self.abspath(self.tests[test_name]["test_env_cfg"]["teardown_playbook"])
+        inventory = self.get_inventory_path(test_name)
+        try:
+            # Do clean-up steps for a test
+            ansible_manager.run_playbook(playbook, inventory)
+        except ansible_manager.AnsiblePlaybookError:
+            exc_info = traceback.format_exc()
+            raise TestError("Teardown for test {} raised exception: {}".format(test_name, exc_info))
+
 
     def run_tests(self):
         testsfailed = 0
         for test_name, test_cfg in self.tests.items():
             with teamcity_messages.block("TEST: {0}".format(test_name)):
                 self.setup(test_name)
+                    
                 if not self.run(test_name):
                     testsfailed += 1
+
                 self.teardown(test_name)
         if testsfailed:
             return False
@@ -329,6 +346,9 @@ if __name__ == "__main__":
                 path = "/tmp/logs-archive"
                 for f in os.listdir(path):
                     print(qa_storage_upload(os.path.join(path, f)))
+    except TestError:
+        traceback.print_exc(file=sys.stderr)
+        exitcode = EXIT_TESTSFAILED
     except:
         traceback.print_exc(file=sys.stderr)
         exitcode = EXIT_INTERNALERROR

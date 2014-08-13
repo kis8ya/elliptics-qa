@@ -7,6 +7,9 @@ import ConfigParser
 import openstack
 import teamcity_messages
 
+class AnsiblePlaybookError(Exception):
+    pass
+
 def get_vars(vars_path):
     if not os.path.isfile(vars_path):
         return {}
@@ -35,7 +38,8 @@ def run_playbook(playbook, inventory=None):
 
         p.wait()
         if p.returncode:
-            raise RuntimeError("Playbook {0} failed (exit code: {1})".format(playbook, p.returncode))
+            raise AnsiblePlaybookError("Playbook {} failed (exit code: {})".format(playbook,
+                                                                                   p.returncode))
 
 def generate_inventory_file(inventory_path, clients_count, servers_per_group,
                             groups, instances_names, os_hostname_prefix):
