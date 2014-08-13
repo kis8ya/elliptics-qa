@@ -55,7 +55,7 @@ def _set_indexes(session, keys, indexes):
 def _load_keys_from_file(path):
     """Returns keys from specified file."""
     keys = json.load(open(path))
-    keys = {str(k) for k in keys}
+    keys = {str(key): {str(index) for index in indexes} for key, indexes in keys.items()}
     return keys
 
 

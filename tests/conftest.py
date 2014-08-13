@@ -1,6 +1,7 @@
 import pytest
 import os.path
 import elliptics
+import socket
 
 from test_helper.elliptics_testhelper import nodes
 
@@ -36,7 +37,7 @@ def session(pytestconfig, nodes):
 
     client_node = elliptics.Node(elog, config)
     for node in nodes:
-        client_node.add_remote(node.host, node.port)
+        client_node.add_remote(node.host, node.port, socket.AF_INET)
 
     elliptics_session = elliptics.Session(client_node)
 

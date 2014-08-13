@@ -1,9 +1,9 @@
 def pytest_addoption(parser):
-    parser.addoption('--consistent-files-number', type='int', dest="consistent_files_number",
+    parser.addoption('--consistent-files-number', type=int, dest="consistent_files_number",
                      help="Amount of files to write which will be accessible from all groups.")
-    parser.addoption('--inconsistent-files-number', type='int', dest="inconsistent_files_number",
+    parser.addoption('--inconsistent-files-number', type=int, dest="inconsistent_files_number",
                      help="Amount of files to write which will be accessible from some groups.")
-    parser.addoption('--file-size', type='int', default=0, dest="file_size",
+    parser.addoption('--file-size', type=int, default=0, dest="file_size",
                      help="Amount of bytes for a single file.")
     parser.addoption('--inconsistent-files-percentage', type=float,
                      dest="inconsistent_files_percentage",
@@ -15,3 +15,5 @@ def pytest_addoption(parser):
                      help="Path to a file with a list of consistent keys (in JSON format).")
     parser.addoption('--inconsistent-keys-path', dest="inconsistent_keys_path",
                      help="Path to a file with a list of inconsistent keys (in JSON format).")
+    parser.addoption('--cache-sync-timeout', type=int, dest="cache_sync_timeout",
+                     help="Cache sync_timeout from elliptics config.")

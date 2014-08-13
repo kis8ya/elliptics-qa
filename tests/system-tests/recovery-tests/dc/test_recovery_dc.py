@@ -55,6 +55,7 @@ import subprocess
 import random
 import json
 import os
+import time
 
 from hamcrest import assert_that, raises, calling, equal_to
 
@@ -78,7 +79,7 @@ def indexes():
 def dropped_groups(pytestconfig, session):
     """Returns a list of dropped groups."""
     if pytestconfig.option.dropped_groups_path:
-        groups = json.load(open(pytestconfig.option.dropped_groups))
+        groups = json.load(open(pytestconfig.option.dropped_groups_path))
     else:
         groups_count = len(session.groups)
         dropped_groups_count = (groups_count + 1) / 2
@@ -94,6 +95,9 @@ def recovery(pytestconfig, request, session, nodes, indexes, dropped_groups):
     """Returns a structure of recovery data."""
     recovery = request.param(pytestconfig.option, session, nodes, dropped_groups, indexes)
     logger.info("{}\n".format(recovery["cmd"]))
+
+    logger.info("Wait for indexes to synchronize.\n")
+    time.sleep(pytestconfig.option.cache_sync_timeout)
 
     recovery["exitcode"] = subprocess.call(recovery["cmd"])
 
