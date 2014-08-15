@@ -4,6 +4,7 @@ elliptics_version: newest
 eblob_version: newest
 
 # Elliptics servers parameters
+elliptics_config: templates/elliptics.json.j2
 log_dir: /var/log/elliptics
 data_dir: /mnt/elliptics
 hist_dir: /tmp/history
