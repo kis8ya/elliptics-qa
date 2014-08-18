@@ -90,7 +90,6 @@ def test_one_node_option(client, nodes, write_data_when_two_dropped):
     when there were 2 dropped nodes
     """
     good_keys, bad_keys, dropped_nodes, dropped_ring_partitioning = write_data_when_two_dropped
-    ring_partitioning = RingPartitioning(client, nodes)
     available_nodes = [n for n in nodes if n not in dropped_nodes]
 
     # check that "good" keys are accessible
