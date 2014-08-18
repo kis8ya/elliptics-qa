@@ -3,6 +3,7 @@ import time
 import subprocess
 import random
 import elliptics
+import copy
 
 from collections import defaultdict
 from hamcrest import assert_that, raises, calling, equal_to
@@ -90,7 +91,6 @@ def test_one_node_option(client, nodes, write_data_when_two_dropped):
     when there were 2 dropped nodes
     """
     good_keys, bad_keys, dropped_nodes, dropped_ring_partitioning = write_data_when_two_dropped
-    ring_partitioning = RingPartitioning(client, nodes)
     available_nodes = [n for n in nodes if n not in dropped_nodes]
 
     # check that "good" keys are accessible
@@ -118,7 +118,7 @@ def test_one_node_option(client, nodes, write_data_when_two_dropped):
         assert retcode == 0, "{0} retcode = {1}".format(cmd, retcode)
 
         key_list = []
-        for k in bad_key_list:
+        for k in copy.copy(bad_key_list):
             elliptics_id = client.transform(k)
             if dropped_ring_partitioning.is_my_id(node.host, elliptics_id):
                 key_list.append(k)
