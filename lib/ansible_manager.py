@@ -10,21 +10,9 @@ import teamcity_messages
 class AnsiblePlaybookError(Exception):
     pass
 
-def get_vars(vars_path):
-    if not os.path.isfile(vars_path):
-        return {}
-    with open(vars_path) as f:
-        vars = json.load(f)
-    return vars
-
 def set_vars(vars_path, params):
     with open(vars_path, 'w') as f:
         json.dump(params, f)
-
-def update_vars(vars_path, params):
-    vars = get_vars(vars_path)
-    vars.update(params)
-    set_vars(vars_path, vars)
 
 def run_playbook(playbook, inventory=None):
     tc_block = "ANSIBLE: {0}({1})".format(os.path.basename(playbook),

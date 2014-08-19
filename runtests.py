@@ -148,8 +148,8 @@ class TestRunner(object):
         """
         # set global params for test suite
         if self.testsuite_params.get("_global"):
-            ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
-                                        params=self.testsuite_params["_global"])
+            ansible_manager.set_vars(vars_path=self._get_vars_path('test'),
+                                     params=self.testsuite_params["_global"])
 
         for name, cfg in self.tests.items():
             groups = ansible_manager._get_groups_names(name)
