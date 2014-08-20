@@ -29,10 +29,9 @@ def run_playbook(playbook, inventory=None):
             raise AnsiblePlaybookError("Playbook {} failed (exit code: {})".format(playbook,
                                                                                    p.returncode))
 
-def generate_inventory_file(inventory_path, clients_count, servers_per_group,
-                            groups, instances_names, os_hostname_prefix):
-    #TODO: move working with os_hostname_prefix parameter to openstack module
-    inventory_host_record_template = '{0}{1} ansible_ssh_user=root'
+def generate_inventory(inventory_path, clients_count, servers_per_group,
+                       groups, instances_names):
+    inventory_host_record_template = '{0} ansible_ssh_user=root'
     servers_group_template = 'servers-{0}'
 
     groups_count = len(servers_per_group)
@@ -40,33 +39,31 @@ def generate_inventory_file(inventory_path, clients_count, servers_per_group,
 
     inventory = ConfigParser.ConfigParser(allow_no_value=True)
 
-    # Add elliptics clients
+    # Add clients section
     inventory.add_section(groups["clients"])
-    for i in get_host_names(instance_name=instances_names['client'], count=clients_count):
-        host_record = inventory_host_record_template.format(i, os_hostname_prefix)
+    for name in instances_names["clients"][:clients_count]:
+        host_record = inventory_host_record_template.format(name)
         inventory.set(groups["clients"], host_record)
     # Add alias for clients' group (to use it in playbooks)
     clients_general_group = _as_group_of_groups('clients')
     inventory.add_section(clients_general_group)
     inventory.set(clients_general_group, groups["clients"])
 
-    # Add elliptics servers
-    servers_names = get_host_names(instance_name=instances_names['server'], count=servers_count)
-    server_name = (x for x in servers_names)
-    for g in xrange(groups_count):
-        # per servers_per_group[i] servers (at ansible group with servers-(i+1) name)
-        group_name = servers_group_template.format(g + 1)
+    # Add servers section
+    server_name = (x for x in instances_names["servers"])
+    for group in xrange(groups_count):
+        # Ansible group will be named as "servers-(<group> + 1)"
+        group_name = servers_group_template.format(group + 1)
         inventory.add_section(group_name)
-        for i in xrange(servers_per_group[g]):
-            host_record = inventory_host_record_template.format(next(server_name),
-                                                                os_hostname_prefix)
+        for _ in xrange(servers_per_group[group]):
+            host_record = inventory_host_record_template.format(next(server_name))
             inventory.set(group_name, host_record)
 
     # Group all servers' groups in associated group
     servers_group_defenition = _as_group_of_groups(groups["servers"])
     inventory.add_section(servers_group_defenition)
-    for g in xrange(groups_count):
-        group_name = servers_group_template.format(g + 1)
+    for group in xrange(groups_count):
+        group_name = servers_group_template.format(group + 1)
         inventory.set(servers_group_defenition, group_name)
     # Add an alias for servers' group (to use it in playbooks)
     servers_general_group = _as_group_of_groups('servers')
