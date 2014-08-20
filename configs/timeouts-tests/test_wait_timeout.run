@@ -1,0 +1,5 @@
+{
+    "type": "pytest",
+    "target": "timeouts-tests",
+    "addopts": "-m \"groups_1\" --wait_timeout=25 --check_timeout=30 {% for node in servers %} --node={{ node.host }}:{{ node.port }}:{{ node.group }}{% endfor %}"
+}

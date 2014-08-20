@@ -1,0 +1,5 @@
+{
+    "type": "pytest",
+    "target": "system-tests/different-versions",
+    "addopts": "--old-version={{ elliptics_old_version }}{% for node in servers %} --node={{ node.host }}:{{ node.port }}:{{ node.group }}{% endfor %}"
+}

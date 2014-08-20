@@ -1,0 +1,5 @@
+{
+    "type": "pytest",
+    "target": "system-tests/cache-tests/lru-tests",
+    "addopts": "-k cache_lru --requests-number=200000 {% for node in servers %} --node={{ node.host }}:{{ node.port }}:{{ node.group }}{% endfor %}"
+}
