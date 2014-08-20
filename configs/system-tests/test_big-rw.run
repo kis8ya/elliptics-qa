@@ -1,0 +1,5 @@
+{
+    "type": "pytest",
+    "target": "system-tests/big-rwtest",
+    "addopts": "--batch_size=1250 --batch_number=800 --wait_timeout=60 --check_timeout=65{% for node in servers %} --node={{ node.host }}:{{ node.port }}:{{ node.group }}{% endfor %}"
+}

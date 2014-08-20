@@ -1,0 +1,5 @@
+{
+    "type": "pytest",
+    "target": "system-tests/recovery-tests/merge",
+    "addopts": "--timeout=3600 --files_number=1000 --files_size=102400 -m \"merge\"{% for node in servers %} --node={{ node.host }}:{{ node.port }}:{{ node.group }}{% endfor %}"
+}

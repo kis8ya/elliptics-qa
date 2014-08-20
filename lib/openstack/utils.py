@@ -68,7 +68,6 @@ def wait_till_active(session, instances):
     """ Waits till instances will be in ACTIVE status
     (and returns a list of dicts {instance_name: ip})
     """
-    os_hostname_prefix = session.hostname_prefix
     hosts_ip = {}
     queue = deque(instances)
     while queue:
@@ -81,7 +80,7 @@ def wait_till_active(session, instances):
             ip = [address['addr']
                   for address in instance_info['addresses'][network_name]
                   if address['version'] == 4]
-            iname = instance + os_hostname_prefix
+            iname = get_fqdn(instance, session.hostname_prefix)
             hosts_ip[iname] = ip[0]
             continue
         queue.appendleft(instance)
@@ -149,7 +148,7 @@ def get_instances_names_from_conf(instance_cfg):
     else:
         # add -N suffix if max_count != 1
         # (where N is an instance number)
-        instances = [ name + '-' + str(i) for i in range(1, count + 1) ]
+        instances = [name + '-' + str(i) for i in range(1, count + 1)]
     return instances
 
 def get_url(endpoint_url, service_type, endpoint_type="COMPUTE", **kwargs):
@@ -203,3 +202,7 @@ def wait_till_deleted(session, instance_name):
     """Waits for instance deletion."""
     while session.get_instance_info(instance_name):
         time.sleep(1)
+
+def get_fqdn(name, dns_zone):
+    """Returns a fully qualified domain name for specified host name and DNS zone."""
+    return name + dns_zone

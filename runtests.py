@@ -11,12 +11,12 @@ import pytest
 import subprocess
 import logging
 import traceback
+import copy
 
 import ansible_manager
 import instances_manager
 import teamcity_messages
-
-from config_template_renderer import get_cfg
+import config_template_renderer as cfg_renderer
 
 # Exit codes
 EXIT_OK = 0
@@ -25,12 +25,14 @@ EXIT_INTERNALERROR = 3
 
 # util functions
 def qa_storage_upload(file_path):
+    storage = "http://qa-storage.yandex-team.ru"
     build_name = os.environ['TEAMCITY_BUILDCONF_NAME']
     build_name = build_name.replace(' ', '_')
     build_number = os.environ['BUILD_NUMBER']
     file_name = os.path.basename(file_path)
-    url = 'http://qa-storage.yandex-team.ru/upload/elliptics-testing/{build_name}/{build_number}/{file_name}'
-    url = url.format(build_name=build_name, build_number=build_number, file_name=file_name)
+    url = '{storage}/upload/elliptics-testing/{build_name}/{build_number}/{file_name}'
+    url = url.format(storage=storage, build_name=build_name,
+                     build_number=build_number, file_name=file_name)
 
     cmd = ["curl", url, "--data-binary", "@" + file_path]
     subprocess.call(cmd)
@@ -96,71 +98,81 @@ class TestRunner(object):
         self.logger = logging.getLogger('runner_logger')
         self.teamcity = args.teamcity
 
-        #TODO: move working with this parameter to openstack module
-        self.os_hostname_prefix = os.environ.get("OS_HOSTNAME_PREFIX", None)
-
-        self.instances_names = {'client': "{0}-client".format(args.instance_name),
-                                'server': "{0}-server".format(args.instance_name)}
-
         self.tests = self.collect_tests(args.tags)
-        self.instances_params = self.collect_instances_params()
-        self.prepare_base_environment()
+        self.inventory = self.get_inventory(args.inventory, args.instance_name)
+        self.tests = self.expand_tests_configs()
+
+        with teamcity_messages.block("PREPARE TEST ENVIRONMENT"):
+            self.prepare_ansible_test_files()
+            self.install_elliptics_packages()
 
     def collect_tests(self, tags):
-        """Collects tests' configs with given tags
-        """
+        """Collects tests' configs with given tags."""
         tests = {}
-        for root, dirs, filenames in os.walk(self.configs_dir):
+        for root, _, filenames in os.walk(self.configs_dir):
             for filename in fnmatch.filter(filenames, 'test_*.cfg'):
                 path = os.path.abspath(os.path.join(root, filename))
-                cfg = get_cfg(path, self.instances_names)
+                cfg = json.load(open(path))
+                cfg["_running_path"] = path.replace(".cfg", ".run")
                 if set(cfg["tags"]).intersection(set(tags)):
                     # test config name format: "test_NAME.cfg"
                     test_name = os.path.splitext(filename)[0][5:]
                     tests[test_name] = cfg
         return tests
 
-    def collect_instances_params(self):
-        """Returns information about clients and servers
-        """
+    def create_cloud_instances(self, instance_name):
+        """Creates cloud instances and returns a dictionary with their names."""
+        instances_names = {'client': "{0}-client".format(instance_name),
+                           'server': "{0}-server".format(instance_name)}
 
-        instances_params = {'clients': {'count': 0, 'flavor': None, 'image': 'elliptics'},
-                            'servers': {'count': 0, 'flavor': None, 'image': 'elliptics'}}
+        instances_params = instances_manager.get_instances_params(self.tests.values())
 
-        clients_params = instances_params['clients']
-        tests_params = [test_cfg['test_env_cfg']['clients'] for test_cfg in self.tests.values()]
+        instances_cfg = instances_manager.get_instances_cfg(instances_params, instances_names)
 
-        clients_params['flavor'] = max((test_params['flavor'] for test_params in tests_params),
-                                       key=instances_manager._flavors_order)
-        clients_params['count'] = max(test_params['count'] for test_params in tests_params)
+        inventory = instances_manager.create(instances_cfg)
+        if not inventory:
+            raise RuntimeError("Not all nodes available")
 
-        servers_params = instances_params['servers']
-        tests_params = [test_cfg['test_env_cfg']['servers'] for test_cfg in self.tests.values()]
+        return inventory
 
-        servers_params['flavor'] = max((test_params['flavor'] for test_params in tests_params),
-                                       key=instances_manager._flavors_order)
-        servers_params['count'] = max(sum(test_params['count_per_group']) for test_params in tests_params)
+    def get_inventory(self, inventory_path, instance_name):
+        """Returns inventory for testrunner."""
+        inventory = None
+        if inventory_path:
+            inventory = json.load(open(inventory_path))
+        else:
+            inventory = self.create_cloud_instances(instance_name)
+        return inventory
 
-        return instances_params
+    def expand_tests_configs(self):
+        """Expands test configs with running configuration parameters."""
+        tests = copy.deepcopy(self.tests)
+        for name in self.tests:
+            env_cfg = self.tests[name]["test_env_cfg"]
+            tests[name]["running"] = cfg_renderer.get_running(self.tests[name]["_running_path"],
+                                                              self.tests[name]["params"],
+                                                              self.inventory,
+                                                              env_cfg["clients"]["count"],
+                                                              env_cfg["servers"]["count_per_group"])
+        return tests
 
     def prepare_ansible_test_files(self):
-        """Prepares ansible inventory and vars files for the tests
-        """
+        """Prepares ansible inventory and vars files for the tests."""
         # set global params for test suite
         if self.testsuite_params.get("_global"):
-            ansible_manager.update_vars(vars_path=self._get_vars_path('test'),
-                                        params=self.testsuite_params["_global"])
+            ansible_manager.set_vars(vars_path=self._get_vars_path('test'),
+                                     params=self.testsuite_params["_global"])
 
         for name, cfg in self.tests.items():
             groups = ansible_manager._get_groups_names(name)
             inventory_path = self.get_inventory_path(name)
+            env = cfg["test_env_cfg"]
 
-            ansible_manager.generate_inventory_file(inventory_path=inventory_path,
-                                                    clients_count=cfg["test_env_cfg"]["clients"]["count"],
-                                                    servers_per_group=cfg["test_env_cfg"]["servers"]["count_per_group"],
-                                                    groups=groups,
-                                                    instances_names=self.instances_names,
-                                                    os_hostname_prefix=self.os_hostname_prefix)
+            ansible_manager.generate_inventory(inventory_path=inventory_path,
+                                               clients_count=env["clients"]["count"],
+                                               servers_per_group=env["servers"]["count_per_group"],
+                                               groups=groups,
+                                               instances_names=self.inventory)
 
             params = cfg["params"]
             if name in self.testsuite_params:
@@ -169,43 +181,27 @@ class TestRunner(object):
             ansible_manager.set_vars(vars_path=vars_path, params=params)
 
     def install_elliptics_packages(self):
-        """Installs elliptics packages on all servers and clients
-        """
+        """Installs elliptics packages on all servers and clients."""
         base_setup_playbook = "test-env-prepare"
         inventory_path = self.get_inventory_path(base_setup_playbook)
         groups = ansible_manager._get_groups_names("setup")
 
-        ansible_manager.generate_inventory_file(inventory_path=inventory_path,
-                                                clients_count=self.instances_params["clients"]["count"],
-                                                servers_per_group=[self.instances_params["servers"]["count"]],
-                                                groups=groups,
-                                                instances_names=self.instances_names,
-                                                os_hostname_prefix=self.os_hostname_prefix)
+        ansible_manager.generate_inventory(inventory_path=inventory_path,
+                                           clients_count=len(self.inventory['clients']),
+                                           servers_per_group=[len(self.inventory['servers'])],
+                                           groups=groups,
+                                           instances_names=self.inventory)
 
-        ansible_manager.run_playbook(self.abspath(base_setup_playbook),
-                                     inventory_path)
-
-    @teamcity_messages.block("PREPARE TEST ENVIRONMENT")
-    def prepare_base_environment(self):
-        """ Prepares base test environment
-        """
-        instances_cfg = instances_manager.get_instances_cfg(self.instances_params,
-                                                            self.instances_names)
-
-        if not instances_manager.create(instances_cfg):
-            raise RuntimeError("Not all nodes available")
-
-        self.prepare_ansible_test_files()
-        self.install_elliptics_packages()
+        playbook = self.abspath(base_setup_playbook)
+        ansible_manager.run_playbook(playbook, inventory_path)
 
     def generate_pytest_cfg(self, test_config):
-        """Generates pytest.ini with test options
-        """
+        """Generates pytest.ini with test options."""
         pytest_config = ConfigParser.ConfigParser()
         pytest_config.add_section("pytest")
-        pytest_config.set("pytest", "addopts", test_config["addopts"])
+        pytest_config.set("pytest", "addopts", test_config["running"]["addopts"])
 
-        self.logger.info("Test running options: {0}".format(test_config["addopts"]))
+        self.logger.info("Test running options: {0}".format(test_config["running"]["addopts"]))
         with open("pytest.ini", "w") as config_file:
             pytest_config.write(config_file)
 
@@ -222,7 +218,7 @@ class TestRunner(object):
             raise TestError("Setup for test {} raised exception: {}".format(test_name, exc_info))
 
         # Check if it's a pytest test
-        if "dir" in test:
+        if test["running"]["type"] == "pytest":
             self.generate_pytest_cfg(test)
 
         cfg_info = "Test environment configuration:\n\tclients: {0}\n\tservers per group: {1}"
@@ -231,7 +227,7 @@ class TestRunner(object):
 
     def run_playbook_test(self, test_name):
         try:
-            ansible_manager.run_playbook(self.abspath(self.tests[test_name]["playbook"]),
+            ansible_manager.run_playbook(self.abspath(self.tests[test_name]["running"]["playbook"]),
                                          self.get_inventory_path(test_name))
         except ansible_manager.AnsiblePlaybookError as exc:
             self.logger.error(exc.message)
@@ -240,21 +236,19 @@ class TestRunner(object):
 
     def run_pytest_test(self, test_name):
         rsyncdir_opts = "--rsyncdir tests/ --rsyncdir lib/test_helper"
-        clients_names = ansible_manager.get_host_names(self.instances_names["client"],
-                                                       self.tests[test_name]["test_env_cfg"]["clients"]["count"])
 
         succeded = True
-        for client_name in clients_names:
+        clients_count = self.tests[test_name]["test_env_cfg"]["clients"]["count"]
+        for client_name in self.inventory["clients"][:clients_count]:
             if self.teamcity:
                 opts = '--teamcity'
             else:
                 opts = ''
-            opts += ' -d --tx ssh="{0}{1} -l root -q" {2} tests/{3}/'
+            opts += ' -d --tx ssh="{0} -l root -q" {1} tests/{2}/'
 
             opts = opts.format(client_name,
-                               self.os_hostname_prefix,
                                rsyncdir_opts,
-                               self.tests[test_name]["dir"])
+                               self.tests[test_name]["running"]["target"])
             self.logger.info(opts)
 
             exitcode = pytest.main(opts)
@@ -264,19 +258,19 @@ class TestRunner(object):
         return succeded
 
     def run(self, test_name):
-        if self.tests[test_name].get("playbook"):
+        if self.tests[test_name]["running"]["type"] == "ansible":
             return self.run_playbook_test(test_name)
-        elif self.tests[test_name].get("dir"):
+        elif self.tests[test_name]["running"]["type"] == "pytest":
             return self.run_pytest_test(test_name)
         else:
-            self.logger.info("Can't specify running method for {0} test.\n".format(test_name))
+            self.logger.info("Can't determine running method for {0} test.\n".format(test_name))
             return False
 
     def teardown(self, test_name):
+        """Does clean-up steps after a test."""
         playbook = self.abspath(self.tests[test_name]["test_env_cfg"]["teardown_playbook"])
         inventory = self.get_inventory_path(test_name)
         try:
-            # Do clean-up steps for a test
             ansible_manager.run_playbook(playbook, inventory)
         except ansible_manager.AnsiblePlaybookError:
             exc_info = traceback.format_exc()
@@ -285,7 +279,7 @@ class TestRunner(object):
 
     def run_tests(self):
         testsfailed = 0
-        for test_name, test_cfg in self.tests.items():
+        for test_name in self.tests:
             with teamcity_messages.block("TEST: {0}".format(test_name)):
                 self.setup(test_name)
                     
@@ -315,6 +309,7 @@ if __name__ == "__main__":
 
     try:
         parser = argparse.ArgumentParser()
+
         parser.add_argument('--configs-dir', dest="configs_dir", required=True,
                             help="directory with tests' configs")
         parser.add_argument('--testsuite-params', dest="testsuite_params", default=None,
@@ -322,12 +317,17 @@ if __name__ == "__main__":
                             "parameters for specified test suite.")
         parser.add_argument('--tag', action="append", dest="tags",
                             help="specifying which tests to run.")
-        parser.add_argument('--instance-name', dest="instance_name", default="elliptics",
-                            help="base name for the instances.")
         parser.add_argument('--verbose', '-v', action="store_true", dest="verbose",
                             help="increase verbosity")
         parser.add_argument('--teamcity', action="store_true", dest="teamcity",
                             help="will format output with Teamcity messages.")
+
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument('--inventory', help="path to inventory file.")
+        group.add_argument('--instance-name', dest="instance_name", default="elliptics",
+                           help="base name for the instances.")
+
+
         args = parser.parse_args()
 
         setup_loggers(args.teamcity, args.verbose)

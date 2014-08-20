@@ -13,44 +13,33 @@ import os
 from jinja2 import Environment, FileSystemLoader
 
 import ansible_manager
+
 from test_helper.utils import Node, Client
 
-os_hostname_prefix = os.environ.get('OS_HOSTNAME_PREFIX', None)
-_hostname_template = "{0}" + os_hostname_prefix
-
-def _get_clients(clients_count, instances_names):
+def _get_clients(clients_count, clients_names):
     client_port = 1083
-    clients_names = ansible_manager.get_host_names(instances_names['client'],
-                                                   clients_count)
-    clients = []
-    for client in clients_names:
-        host = _hostname_template.format(client)
-        clients.append(Client(host, client_port))
+    clients = [Client(client_name, client_port)
+               for client_name in clients_names[:clients_count]]
 
     return clients
 
-def _get_servers(servers_per_group, instances_names):
+def _get_servers(servers_per_group, servers_names):
     servers = []
     server_port = 1025
-    servers_names = ansible_manager.get_host_names(instances_names['server'],
-                                                   sum(servers_per_group))
+    groups_count = len(servers_per_group)
     server_name = iter(servers_names)
-    for group in xrange(len(servers_per_group)):
-        for i in xrange(servers_per_group[group]):
-            host = _hostname_template.format(next(server_name))
-            servers.append(Node(host, server_port, group+1))
+
+    for group in xrange(groups_count):
+        for _ in xrange(servers_per_group[group]):
+            servers.append(Node(next(server_name), server_port, group + 1))
 
     return servers
 
-def get_cfg(path, instances_names):
+def get_running(path, params, instances_names, clients_count, servers_per_group):
     """Returns test config as dictionary."""
-    # Getting information about clients and servers
-    tmp_cfg = json.load(open(path))
-    variables = copy.deepcopy(tmp_cfg["params"])
-    variables["clients"] = _get_clients(tmp_cfg["test_env_cfg"]["clients"]["count"],
-                                        instances_names)
-    variables["servers"] = _get_servers(tmp_cfg["test_env_cfg"]["servers"]["count_per_group"],
-                                        instances_names)
+    variables = copy.deepcopy(params)
+    variables["clients"] = _get_clients(clients_count, instances_names["clients"])
+    variables["servers"] = _get_servers(servers_per_group, instances_names["servers"])
     # Render test config
     environment = Environment(loader=FileSystemLoader('/'))
     template = environment.get_template(path)
