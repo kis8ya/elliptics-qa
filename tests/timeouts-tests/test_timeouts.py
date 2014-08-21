@@ -138,10 +138,8 @@ def test_quorum_checker_negative(quorum_checker_negative):
 @pytest.fixture(scope='function')
 def client_shuffling_off(pytestconfig, nodes):
     """Prepares elliptics session with cleared groups shuffling flag"""
-    pytest.skip("Test should be updated for Elliptics v2.26.")
-
     config = elliptics.Config()
-    config.flags &= ~elliptics.config_flags.mix_stats
+    config.flags &= ~elliptics.config_flags.mix_states
 
     wait_timeout = pytestconfig.option.wait_timeout
     check_timeout = pytestconfig.option.check_timeout
@@ -190,4 +188,3 @@ def test_read_from_groups(write_and_shuffling_off):
     wait_timeout = client.get_timeout()
     assert_that(all_of(exec_time, greater_than(wait_timeout),
                        exec_time, less_than(wait_timeout * 2)))
-
