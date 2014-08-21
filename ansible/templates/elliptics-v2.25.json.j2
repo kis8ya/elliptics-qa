@@ -1,0 +1,44 @@
+{
+  "loggers": {
+    "type": "{{ log_dir }}/elliptics.log",
+    "level": 4
+  },
+  "options": {
+    "join": true,
+    "remote": [
+      {% for host in groups['servers'] %}
+        "{{ host }}:1025:2"
+        {% if not loop.last %}
+          ,
+        {% endif %}
+      {% endfor %}
+    ],
+    "address": [
+      "{{ ansible_eth0.ipv4.address }}:1025:2"
+    ],
+    "io_thread_num": 8,
+    "nonblocking_io_thread_num": 8,
+    "net_thread_num": 4,
+    "daemon": true,
+    "auth_cookie": "ellicoca",
+    {% if cocaine_config is defined %}
+      "srw_config": "{{ cocaine_config }}",
+    {% endif %}
+    "cache": {
+      "size": {{ cache_size }},
+      "shards": {{ cache_numbers }},
+      "pages_proportions": {{ cache_pages_proportions }},
+      "sync_timeout": {{ cache_sync_timeout }}
+    }
+  },
+  "backends": [
+    {
+      "type": "blob",
+      "group": {{ group }},
+      "history": "{{ hist_dir }}",
+      "data": "{{ data_dir }}/data",
+      "sync": -1,
+      "blob_size": "{{ blob_size }}"
+    }
+  ]
+}
