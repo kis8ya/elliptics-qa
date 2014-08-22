@@ -1,0 +1,3 @@
+[submodule "runner"]
+	path = runner
+	url = https://github.com/kis8ya/tests-runner.git
