@@ -1,0 +1,5 @@
+{
+    "type": "pytest",
+    "target": "proxy-tests/fastcgi-tests",
+    "addopts": "--proxy=http://{{ clients[0].host }}:{{ clients[0].port }}"
+}

@@ -1,0 +1,5 @@
+{
+    "type": "pytest",
+    "target": "functional-tests/read-write-tests",
+    "addopts": "-m \"readtest\" {% for node in servers %} --node={{ node.host }}:{{ node.port }}:{{ node.group }}{% endfor %}"
+}

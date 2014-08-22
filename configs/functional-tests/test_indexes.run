@@ -1,0 +1,5 @@
+{
+    "type": "pytest",
+    "target": "functional-tests/indexes-tests",
+    "addopts": "-rxs --batches-number=1000 --files-per-batch=10 {% for node in servers %} --node={{ node.host }}:{{ node.port }}:{{ node.group }}{% endfor %}"
+}
