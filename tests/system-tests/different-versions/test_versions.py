@@ -105,8 +105,8 @@ def test_new_client(new_client_node, old_nodes):
     addresses = [elliptics.Address(node.host, node.port, socket.AF_INET)
                  for node in old_nodes]
     assert_that(calling(new_client_node.add_remotes).with_args(addresses),
-                raises_elliptics_error(elliptics.Error, -errno.ECONNREFUSED),
-                "New client didn't raise expected exception with correct code")
+                raises(elliptics.Error),
+                "New client didn't raise expected exception")
 
 @pytest.mark.old_version
 def test_old_nodes(old_session, old_nodes):
@@ -126,5 +126,5 @@ def test_old_client(old_client_node, new_nodes):
         assert_that(calling(old_client_node.add_remote).with_args(node.host,
                                                                   node.port,
                                                                   socket.AF_INET),
-                    raises_elliptics_error(elliptics.Error, -errno.ECONNREFUSED),
-                    "New client didn't raise expected exception with correct code")
+                    raises(elliptics.Error),
+                    "New client didn't raise expected exception")
