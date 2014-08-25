@@ -33,9 +33,9 @@ if __name__ == "__main__":
         target_branch = args.branch
 
     if target_branch == "master":
-        print("v2.25")
-    elif target_branch == "multibackend":
         print("v2.26")
+    elif target_branch == "v2.25":
+        print("v2.25")
     else:
         exitcode = EXIT_WRONGBRANCH
 
