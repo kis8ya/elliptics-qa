@@ -4,16 +4,18 @@ elliptics_version: newest
 eblob_version: newest
 
 # Elliptics servers parameters
+elliptics_dir: /mnt/elliptics
 elliptics_config: templates/elliptics.json.j2
 log_dir: /var/log/elliptics
-data_dir: /mnt/elliptics
-hist_dir: /tmp/history
+data_dir: data
+hist_dir: history
 config: /etc/elliptics.conf
 blob_size: 2G
 cache_size: 20971520
 cache_sync_timeout: 60
 cache_numbers: 16
 cache_pages_proportions: [4, 2]
+backends_number: 3
 
 # Test paramaters
 check_timeout: 30

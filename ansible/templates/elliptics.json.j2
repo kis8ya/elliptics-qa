@@ -44,14 +44,21 @@
     }
   },
   "backends": [
-    {
-      "type": "blob",
-      "backend_id": 1,
-      "group": {{ group }},
-      "history": "{{ hist_dir }}",
-      "data": "{{ data_dir }}/data",
-      "sync": -1,
-      "blob_size": "{{ blob_size }}"
-    }
+    {% for backend_number in range(backends_number) %}
+      {
+	"type": "blob",
+	"backend_id": {{ backend_number }},
+	"group": {{ group }},
+	"history": "{{ elliptics_dir }}/{{ backend_number }}/{{ hist_dir }}",
+	"data": "{{ elliptics_dir }}/{{ backend_number }}/{{ data_dir }}/data",
+	"sync": -1,
+	"blob_size": "{{ blob_size }}"
+      }
+      
+      {% if not loop.last %}
+      ,
+      {% endif %}
+
+    {% endfor %}
   ]
 }
