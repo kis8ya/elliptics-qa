@@ -119,7 +119,7 @@ def test_old_nodes(old_session, old_nodes):
 
 @pytest.mark.old_version
 def test_old_client(old_client_node, new_nodes):
-    """Testing that client (with new elliptics version)
+    """Testing that client (with old elliptics version)
     will not add nodes with old elliptics version
     """
     for node in new_nodes:
@@ -127,4 +127,4 @@ def test_old_client(old_client_node, new_nodes):
                                                                   node.port,
                                                                   socket.AF_INET),
                     raises(elliptics.Error),
-                    "New client didn't raise expected exception")
+                    "Old client didn't raise expected exception")
