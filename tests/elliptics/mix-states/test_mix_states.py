@@ -24,7 +24,7 @@ HIGH_DELAY_PERC_MIN = 0.00
 HIGH_DELAY_PERC_MAX = 0.02
 # Number of requests to stabilize weights
 STABILIZE_REQUESTS_COUNT = 200
-# Number of requests the test to check
+# Number of requests for the test to check
 PROBE_REQUESTS_COUNT = 1000
 
 
