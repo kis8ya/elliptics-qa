@@ -10,21 +10,22 @@ from test_helper.elliptics_testhelper import nodes
 from test_helper.logging_tests import logger
 
 
+# Logging file for elliptics client
 LOG_FILE = "elliptics_client.log"
-
-
+# Data length for key which will be used for test requests
 DATA_LENGTH = 1
-
-
+# Networking delays
 LOW_DELAY = 0
 HIGH_DELAY = 700
+# A rate to calculate a confidence interval for test check
 INACCURACY_RATE = 2.0
+# A confidence interval (in percentage) for nodes with high delay
 HIGH_DELAY_PERC_MIN = 0.00
 HIGH_DELAY_PERC_MAX = 0.02
-
-
+# Number of requests to stabilize weights
 STABILIZE_REQUESTS_COUNT = 200
-PROBE_REQUESTS_COUNT = 800
+# Number of requests the test to check
+PROBE_REQUESTS_COUNT = 1000
 
 
 @pytest.fixture(scope='module')
@@ -88,8 +89,8 @@ def case(request, nodes, create_schedulers):
 
         {
           "delay": <delay>,
-          "expected_min": <high_delay_perc_min>,
-          "expected_max": HIGH_DELAY_PERC_MIN
+          "expected_min": <percentage minimum>,
+          "expected_max": <percentage maximum>
         }
 
     """
