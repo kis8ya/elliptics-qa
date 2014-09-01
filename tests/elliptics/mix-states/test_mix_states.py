@@ -82,7 +82,7 @@ def key(session):
     return key
 
 
-@pytest.fixture(scope='module', params=["+++++-"])
+@pytest.fixture(scope='module', params=["------", "+-----", "+++++-"])
 def case(request, nodes, create_schedulers):
     """Returns test cases.
 
