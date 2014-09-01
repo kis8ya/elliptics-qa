@@ -24,4 +24,4 @@ def del_scheduler(host):
     """Removes a scheduler for a network interface on specified host."""
     cmd = "ssh -q {} tc qdisc del dev eth0 root netem delay 0ms".format(host)
     subprocess.check_call(shlex.split(cmd))
-    logger.info("A sceduler for network emulator was removed for host: {}\n".format(host))
+    logger.info("A scheduler for network emulator was removed for host: {}\n".format(host))
