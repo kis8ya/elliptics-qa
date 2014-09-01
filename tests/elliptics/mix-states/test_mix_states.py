@@ -131,17 +131,21 @@ def requests_count(case, session, key):
     trans_checker_params = RequestsCounter.TransCheckerParams(logged_destructions, case,
                                                               LOW_DELAY, LOW_DELAY_EXPECTED_TIME)
 
+    # Stabilize weights
+    mix_states_utils.do_requests_with_retry(session, key, STABILIZE_REQUESTS_COUNT,
+                                            STABILIZING_RETRY_NUMBER_MAX, trans_checker_params)
+
     while retry_number < STATISTICS_RETRY_NUMBER_MAX and \
           data_samples_collected < SAMPLES_COUNT:
-        # Stabilize weight before sample
-        mix_states_utils.do_requests_with_retry(session, key, STABILIZE_REQUESTS_COUNT,
-                                                STABILIZING_RETRY_NUMBER_MAX, trans_checker_params)
-
         sample = mix_states_utils.do_requests_with_retry(session, key, SAMPLE_REQUESTS_COUNT,
                                                          1, trans_checker_params)
 
         if sample is None:
             retry_number += 1
+            # Stabilize weights
+            mix_states_utils.do_requests_with_retry(session, key, STABILIZE_REQUESTS_COUNT,
+                                                    STABILIZING_RETRY_NUMBER_MAX,
+                                                    trans_checker_params)
         else:
             # Collecting statistics
             for host, requests_count in sample.items():
