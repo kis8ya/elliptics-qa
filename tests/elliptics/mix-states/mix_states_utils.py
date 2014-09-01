@@ -63,8 +63,6 @@ class RequestsCounter(dict):
         params = self._checker_params
         destruction_record = next(params.logged_destructions)
 
-        print("{}".format(json.dumps(destruction_record, indent=4)))
-
         host = destruction_record["st"].split(":")[0]
         if params.case[host]["delay"] == params.checked_delay and \
            int(destruction_record["time"]) > params.checked_delay_expected_time:
@@ -100,7 +98,6 @@ def do_requests(session, key, requests_number, trans_checker_params):
 
 def stabilizing_requests(session, key, requests_count, retry_max, trans_checker_params):
     """Does specified amount of requests to stabilize weights."""
-    print("trying to stabilize weights")
     retry_number = 0
     while retry_number < retry_max:
         try:
