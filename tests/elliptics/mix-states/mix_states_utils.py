@@ -96,16 +96,16 @@ def do_requests(session, key, requests_number, trans_checker_params):
     return requests_count
 
 
-def stabilizing_requests(session, key, requests_count, retry_max, trans_checker_params):
+def do_requests_with_retry(session, key, requests_count, retry_max, trans_checker_params):
     """Does specified amount of requests to stabilize weights."""
     retry_number = 0
     while retry_number < retry_max:
         try:
-            do_requests(session, key, requests_count, trans_checker_params)
+            sample = do_requests(session, key, requests_count, trans_checker_params)
         except OvertimeError as exc:
-            logger.info("Failed to stabilize weights - retrying: {}\n".format(exc.message))
+            logger.info("Failed to do {} requests - retrying: {}\n".format(requests_count,
+                                                                           exc.message))
             retry_number += 1
         else:
-            return
-    raise RuntimeError("Retries count ({}) exceeded while was trying to stabilize weights."
-                       .format(retry_number))
+            return sample
+    return None

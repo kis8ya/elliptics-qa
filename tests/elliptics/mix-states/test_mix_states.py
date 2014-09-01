@@ -126,6 +126,7 @@ def requests_count(case, session, key):
     statistics = defaultdict(int)
     data_samples_collected = 0
     retry_number = 0
+    # Prepare parameters to check a READ-transaction time
     logged_destructions = mix_states_utils.get_logged_destructions(session, LOG_FILE)
     trans_checker_params = RequestsCounter.TransCheckerParams(logged_destructions, case,
                                                               LOW_DELAY, LOW_DELAY_EXPECTED_TIME)
@@ -133,13 +134,13 @@ def requests_count(case, session, key):
     while retry_number < STATISTICS_RETRY_NUMBER_MAX and \
           data_samples_collected < SAMPLES_COUNT:
         # Stabilize weight before sample
-        mix_states_utils.stabilizing_requests(session, key, STABILIZE_REQUESTS_COUNT,
-                                              STABILIZING_RETRY_NUMBER_MAX, trans_checker_params)
-        try:
-            sample = mix_states_utils.do_requests(session, key, SAMPLE_REQUESTS_COUNT,
-                                                  trans_checker_params)
-        except mix_states_utils.OvertimeError as exc:
-            logger.info("Failed to collect statistics - retrying: {}\n".format(exc.message))
+        mix_states_utils.do_requests_with_retry(session, key, STABILIZE_REQUESTS_COUNT,
+                                                STABILIZING_RETRY_NUMBER_MAX, trans_checker_params)
+
+        sample = mix_states_utils.do_requests_with_retry(session, key, SAMPLE_REQUESTS_COUNT,
+                                                         1, trans_checker_params)
+
+        if sample is None:
             retry_number += 1
         else:
             # Collecting statistics
