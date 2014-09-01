@@ -3,12 +3,15 @@ import elliptics
 import socket
 import json
 
+from collections import defaultdict
 from hamcrest import assert_that, all_of, greater_than_or_equal_to, less_than_or_equal_to
 
+import mix_states_utils
+
+from mix_states_utils import RequestsCounter
 from test_helper import utils, network
 from test_helper.elliptics_testhelper import nodes
 from test_helper.logging_tests import logger
-
 
 # Logging file for elliptics client
 LOG_FILE = "elliptics_client.log"
@@ -17,15 +20,23 @@ DATA_LENGTH = 1
 # Networking delays
 LOW_DELAY = 0
 HIGH_DELAY = 700
+# Expected taken time (in microseconds) for READ operations on nodes with low delay
+LOW_DELAY_EXPECTED_TIME = 5000
 # A rate to calculate a confidence interval for test check
 INACCURACY_RATE = 2.0
 # A confidence interval (in percentage) for nodes with high delay
 HIGH_DELAY_PERC_MIN = 0.00
 HIGH_DELAY_PERC_MAX = 0.02
 # Number of requests to stabilize weights
-STABILIZE_REQUESTS_COUNT = 200
-# Number of requests for the test to check
-PROBE_REQUESTS_COUNT = 1000
+STABILIZE_REQUESTS_COUNT = 50
+# Number of requests in one sample for the test to check
+SAMPLE_REQUESTS_COUNT = 100
+# Number of samples
+SAMPLES_COUNT = 10
+# Number of retries for stabilizing weights
+STABILIZING_RETRY_NUMBER_MAX = 1000
+# Number of retries for collecting statistics
+STATISTICS_RETRY_NUMBER_MAX = 1000000
 
 
 @pytest.fixture(scope='module')
@@ -43,8 +54,8 @@ def create_schedulers(request, nodes):
 
 @pytest.fixture(scope='function')
 def session(nodes):
-    """Returns prepared elliptics.Session."""
-    elog = elliptics.Logger(LOG_FILE, 4)
+    """Returns prepared elliptics.Session with set `config_flags.mix_states` flag."""
+    elog = elliptics.Logger(LOG_FILE, elliptics.log_level.debug)
     ecfg = elliptics.Config()
     # Set DNET_CFG_MIX_STATES flag
     ecfg.flags |= elliptics.config_flags.mix_states
@@ -71,19 +82,7 @@ def key(session):
     return key
 
 
-def do_requests(session, nodes, key, requests_number):
-    """Does specified amount of READ requests."""
-    requests_count = {socket.gethostbyname(node.host): 0
-                      for node in nodes}
-
-    for _ in xrange(requests_number):
-        result = session.read_data(key).get().pop()
-        requests_count[result.address.host] += 1
-
-    return requests_count
-
-
-@pytest.fixture(scope='module', params=["------", "+-----", "+++++-"])
+@pytest.fixture(scope='module', params=["+++++-"])
 def case(request, nodes, create_schedulers):
     """Returns test cases.
 
@@ -122,12 +121,37 @@ def case(request, nodes, create_schedulers):
 
 
 @pytest.fixture(scope='function')
-def requests_count(case, session, nodes, key):
-    """Returns statistics about numbers of requests which were send to each node."""
-    # Do some requests to stabilize weights
-    do_requests(session, nodes, key, STABILIZE_REQUESTS_COUNT)
-    # Probe requests
-    return do_requests(session, nodes, key, PROBE_REQUESTS_COUNT)
+def requests_count(case, session, key):
+    """Returns statistics about numbers of requests that were send to each node."""
+    statistics = defaultdict(int)
+    data_samples_collected = 0
+    retry_number = 0
+    logged_destructions = mix_states_utils.get_logged_destructions(session, LOG_FILE)
+    trans_checker_params = RequestsCounter.TransCheckerParams(logged_destructions, case,
+                                                              LOW_DELAY, LOW_DELAY_EXPECTED_TIME)
+
+    while retry_number < STATISTICS_RETRY_NUMBER_MAX and \
+          data_samples_collected < SAMPLES_COUNT:
+        # Stabilize weight before sample
+        mix_states_utils.stabilizing_requests(session, key, STABILIZE_REQUESTS_COUNT,
+                                              STABILIZING_RETRY_NUMBER_MAX, trans_checker_params)
+        try:
+            sample = mix_states_utils.do_requests(session, key, SAMPLE_REQUESTS_COUNT,
+                                                  trans_checker_params)
+        except mix_states_utils.OvertimeError as exc:
+            logger.info("Failed to collect statistics - retrying: {}\n".format(exc.message))
+            retry_number += 1
+        else:
+            # Collecting statistics
+            for host, requests_count in sample.items():
+                statistics[host] += requests_count
+            data_samples_collected += 1
+
+    if data_samples_collected == SAMPLES_COUNT:
+        return statistics
+    else:
+        raise RuntimeError("Retries count ({}) exceeded while was trying to collect statistics."
+                           .format(retry_number))
 
 
 def test_mix_states(case, requests_count):
