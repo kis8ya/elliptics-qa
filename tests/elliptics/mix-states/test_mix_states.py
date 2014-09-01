@@ -126,8 +126,10 @@ def requests_count(case, session, key):
     statistics = defaultdict(int)
     data_samples_collected = 0
     retry_number = 0
-    # Prepare parameters to check a READ-transaction time
+    # Get iterable with logged records about desctructions READ transactions
+    # from these records we will get information about transaction taken time
     logged_destructions = mix_states_utils.get_logged_destructions(session, LOG_FILE)
+    # Prepare parameters to check a READ-transaction time
     trans_checker_params = RequestsCounter.TransCheckerParams(logged_destructions, case,
                                                               LOW_DELAY, LOW_DELAY_EXPECTED_TIME)
 
