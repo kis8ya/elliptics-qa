@@ -1,5 +1,6 @@
 ---
 - hosts: all
+  sudo: yes
   tasks:
     - name: Perform 'apt-get update'
       apt: update_cache=yes
@@ -8,16 +9,19 @@
 
 - hosts: all
   gather_facts: no
+  sudo: yes
   roles:
     - {role: apt-update-fix, when: apt_update|failed}
 
 - hosts: all
+  sudo: yes
   roles:
     - {role: install-elliptics-from-debs, when: packages_dir is defined}
 
     - {role: install-elliptics-from-repo, when: packages_dir is not defined}
 
 - hosts: servers
+  sudo: yes
   tasks:
     - name: Create logging directories
       file: path={{ log_dir }} state=directory

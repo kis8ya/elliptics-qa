@@ -1,13 +1,16 @@
 ---
 - hosts: servers
+  sudo: yes
   roles:
     - prepare-cocaine
 
 - hosts: clients
+  sudo: yes
   roles:
     - build-grape
 
 - hosts: servers
+  sudo: yes
   tasks:
     - name: Install grape packages
       shell: dpkg --force-depends --install grape*deb
