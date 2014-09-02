@@ -1,5 +1,6 @@
 ---
 - hosts: servers
+  sudo: yes
   tasks:
     - name: Getting process id
       shell: pgrep dnet_ioserv
