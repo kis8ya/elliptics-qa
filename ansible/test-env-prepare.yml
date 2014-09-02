@@ -2,6 +2,7 @@
 - include: install-elliptics.yml
 
 - hosts: clients
+  sudo: yes
   tasks:
     - name: Install debian packages
       apt: pkg={{ item }}
