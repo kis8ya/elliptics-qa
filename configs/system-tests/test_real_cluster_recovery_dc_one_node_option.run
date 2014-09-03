@@ -1,0 +1,5 @@
+{
+    "type": "pytest",
+    "target": "system-tests/recovery-tests/dc",
+    "addopts": "{% for node in servers %} --node={{ node.host }}:{{ node.port }}:{{ node.group }}{% endfor %} --consistent-keys-path={{ consistent_keys_path }} --inconsistent-keys-path={{ inconsistent_keys_path }} --inconsistent-files-percentage=0.13 --dropped-groups={{ dropped_groups_path }} --cache-sync-timeout={{ cache_sync_timeout }} -k one_node_option"
+}
