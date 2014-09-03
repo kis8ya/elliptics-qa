@@ -4,18 +4,31 @@ elliptics_version: newest
 eblob_version: newest
 
 # Elliptics servers parameters
-elliptics_dir: /mnt/elliptics
 elliptics_config: templates/elliptics.json.j2
-log_dir: /var/log/elliptics
+config: elliptics.conf
+## directories
+elliptics_dir: /mnt/elliptics
+log_dir: log
 data_dir: data
 hist_dir: history
-config: /etc/elliptics.conf
-blob_size: 2G
+## options section
+flags: 4
+io_thread_num: 8
+net_thread_num: 4
+nonblocking_io_thread_num: 4
+iterate_thread_num: 1
+indexes_shard_count: 16
+### cache section
 cache_size: 20971520
 cache_sync_timeout: 60
 cache_numbers: 16
 cache_pages_proportions: [4, 2]
+## backend blob-type section
+blob_size: 2G
+records_in_blob: 500000
 backends_number: 3
+blob_flags: 6
+blob_sync: -1
 
 # Test paramaters
 check_timeout: 30
@@ -34,3 +47,7 @@ fastcgi_log_dir: /tmp/log
 fastcgi_tmp_dir: /tmp/fastcgi
 fastcgi_config_path: /root/fastcgi_config.xml
 fastcgi_daemon_name: fastcgi-daemon2
+
+# collecting logs parameters
+collecting_logs_dir: /tmp/logs
+archive_logs_dir: /tmp/logs-archive

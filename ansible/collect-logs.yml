@@ -4,28 +4,34 @@
     - name: Remove logs' directories
       local_action: file path={{ item }} state=absent
       with_items:
-        - /tmp/logs
-        - /tmp/logs-archive
+        - "{{ collecting_logs_dir }}"
+        - "{{ archive_logs_dir }}"
 
     - name: Create logs' directories
       local_action: file path={{ item }} state=directory
       with_items:
-        - /tmp/logs
-        - /tmp/logs-archive
+        - "{{ collecting_logs_dir }}"
+        - "{{ archive_logs_dir }}"
 
 - hosts: servers
   tasks:
     - name: Copy servers logs
-      fetch: src={{ log_dir }}/elliptics.log dest=/tmp/logs/{{ ansible_hostname }}.log
+      fetch:
+        src={{ elliptics_dir }}/{{ log_dir }}/elliptics.log
+        dest={{ collecting_logs_dir }}
 
 - hosts: clients
   tasks:
     - name: Copy clients logs
-      fetch: src={{ log_dir }}/client.log dest=/tmp/logs/{{ ansible_hostname }}.log
+      fetch:
+        src={{ elliptics_dir }}/{{ log_dir }}/client.log
+        dest={{ collecting_logs_dir }}
 
 - hosts: 127.0.0.1
   tasks:
     - name: zip files
-      local_action: command zip /tmp/logs-archive/{{ item|replace("/tmp/logs/", "") }}.zip {{ item }}
-      with_fileglob:
-        - /tmp/logs/*
+      shell: >
+        for i in `ls {{ collecting_logs_dir }}`;
+        do
+          zip -r {{ archive_logs_dir }}/$i.zip {{ collecting_logs_dir }}/$i;
+        done
