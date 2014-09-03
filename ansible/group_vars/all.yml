@@ -34,3 +34,7 @@ fastcgi_log_dir: /tmp/log
 fastcgi_tmp_dir: /tmp/fastcgi
 fastcgi_config_path: /root/fastcgi_config.xml
 fastcgi_daemon_name: fastcgi-daemon2
+
+# collecting logs parameters
+collecting_logs_dir: /tmp/logs
+archive_logs_dir: /tmp/logs-archive
