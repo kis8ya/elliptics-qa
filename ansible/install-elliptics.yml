@@ -24,7 +24,7 @@
   sudo: yes
   tasks:
     - name: Create logging directories
-      file: path={{ log_dir }} state=directory
+      file: path={{ elliptics_dir }}/{{ log_dir }} state=directory
 
     - name: Create data and history directories
       file: path={{ elliptics_dir }}/{{ item[0] }}/{{ item[1] }} state=directory

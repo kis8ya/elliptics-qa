@@ -6,10 +6,10 @@ eblob_version: newest
 # Elliptics servers parameters
 elliptics_dir: /mnt/elliptics
 elliptics_config: templates/elliptics.json.j2
-log_dir: /var/log/elliptics
+log_dir: log
 data_dir: data
 hist_dir: history
-config: /etc/elliptics.conf
+config: elliptics.conf
 blob_size: 2G
 cache_size: 20971520
 cache_sync_timeout: 60
