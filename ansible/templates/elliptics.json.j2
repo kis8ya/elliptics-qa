@@ -28,14 +28,19 @@
     "address": [
       "{{ ansible_eth0.ipv4.address }}:1025:2"
     ],
-    "io_thread_num": 8,
-    "nonblocking_io_thread_num": 8,
-    "net_thread_num": 4,
+    "flags": {{ flags }},
+    "wait_timeout": {{ wait_timeout }},
+    "check_timeout": {{ check_timeout }},
+    "io_thread_num": {{ io_thread_num }},
+    "net_thread_num": {{ net_thread_num }},
+    "nonblocking_io_thread_num": {{ nonblocking_io_thread_num }},
+    "iterate_thread_num": {{ iterate_thread_num }},
     "daemon": true,
     "auth_cookie": "ellicoca",
     {% if cocaine_config is defined %}
       "srw_config": "{{ cocaine_config }}",
     {% endif %}
+    "indexes_shard_count": {{ indexes_shard_count }},
     "cache": {
       "size": {{ cache_size }},
       "shards": {{ cache_numbers }},
@@ -48,11 +53,13 @@
       {
 	"type": "blob",
 	"backend_id": {{ backend_number }},
+        "blob_flags": {{ blob_flags }},
 	"group": {{ group }},
 	"history": "{{ elliptics_dir }}/{{ backend_number }}/{{ hist_dir }}",
 	"data": "{{ elliptics_dir }}/{{ backend_number }}/{{ data_dir }}/data",
-	"sync": -1,
-	"blob_size": "{{ blob_size }}"
+        "sync": {{ blob_sync }},
+        "blob_size": "{{ blob_size }}",
+        "records_in_blob": {{ records_in_blob }}
       }
       
       {% if not loop.last %}
