@@ -8,7 +8,6 @@ from hamcrest import assert_that, all_of, greater_than_or_equal_to, less_than_or
 
 import mix_states_utils
 
-from mix_states_utils import RequestsCounter
 from test_helper import utils, network
 from test_helper.elliptics_testhelper import nodes
 from test_helper.logging_tests import logger
@@ -122,7 +121,18 @@ def case(request, nodes, create_schedulers):
 
 @pytest.fixture(scope='function')
 def requests_count(case, session, key):
-    """Returns statistics about numbers of requests that were send to each node."""
+    """Returns statistics about numbers of requests that were send to each node.
+
+    Collects statistics with following strategy:
+
+      1. Stabilize weights.
+      2. Make **SAMPLE_REQUESTS_COUNT** requests and store data about number of
+      requests for each node.
+        * If requests, that went to node with low delay, took more than allowed
+        time, then go back to `1`.
+      3. Collect statistics.
+
+    """
     statistics = defaultdict(int)
     data_samples_collected = 0
     retry_number = 0
@@ -130,8 +140,8 @@ def requests_count(case, session, key):
     # from these records we will get information about transaction taken time
     logged_destructions = mix_states_utils.get_logged_destructions(session, LOG_FILE)
     # Prepare parameters to check a READ-transaction time
-    trans_checker_params = RequestsCounter.TransCheckerParams(logged_destructions, case,
-                                                              LOW_DELAY, LOW_DELAY_EXPECTED_TIME)
+    trans_checker_params = mix_states_utils.TransCheckerParams(logged_destructions, case,
+                                                               LOW_DELAY, LOW_DELAY_EXPECTED_TIME)
 
     # Stabilize weights
     mix_states_utils.do_requests_with_retry(session, key, STABILIZE_REQUESTS_COUNT,
@@ -166,6 +176,12 @@ def test_mix_states(case, requests_count):
 
     When `elliptics.config_flags.mix_states` flag set, requests (for READ
     operation) will be distributed uniformly between nodes which respond faster.
+
+    Test gets requests statistics (how many READ requests went to each elliptics
+    node) and checks that this statistics corresponds to expected number of
+    requests (it must be in confidence interval, which test calculates with
+    percentage minimum and maximum of expected requests number (provided by test
+    case data)).
 
     """
     logger.info("Case: {}\nRequests count: {}\n".format(json.dumps(case, indent=4), requests_count))

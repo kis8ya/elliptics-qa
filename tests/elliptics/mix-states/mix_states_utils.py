@@ -1,16 +1,9 @@
 import time
 import json
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 from test_helper.logging_tests import logger
-
-
-class OvertimeError(Exception):
-    """Raised when Elliptics transaction took more time than upper bound for an
-    expected time.
-    """
-    pass
 
 
 def _follow(logfile):
@@ -46,66 +39,52 @@ def get_logged_destructions(session, log_file):
     return _filter_destructions(loglines)
 
 
-class RequestsCounter(dict):
-    """Amount of requests that went to hosts (with Elliptics node)."""
+TransCheckerParams = namedtuple('TransCheckerParams', ["logged_destructions",
+                                                       "case",
+                                                       "checked_delay",
+                                                       "checked_delay_expected_time"])
 
-    TransCheckerParams = namedtuple('TransCheckerParams', ["logged_destructions",
-                                                           "case",
-                                                           "checked_delay",
-                                                           "checked_delay_expected_time"])
 
-    def __init__(self, checker_params):
-        self._checker_params = checker_params
-        super(RequestsCounter, self).__init__()
+def _check_trans_time(params):
+    """Checks READ transaction time."""
+    destruction_record = next(params.logged_destructions)
+    host = destruction_record["st"].split(":")[0]
 
-    def _check_trans_time(self):
-        """Checks READ transaction time."""
-        params = self._checker_params
-        destruction_record = next(params.logged_destructions)
-
-        host = destruction_record["st"].split(":")[0]
-        if params.case[host]["delay"] == params.checked_delay and \
-           int(destruction_record["time"]) > params.checked_delay_expected_time:
-            raise OvertimeError("READ transaction is overtimed")
-
-    def __getitem__(self, key):
-        # if the key is not in items, then set it's value to 0
-        try:
-            super(RequestsCounter, self).__getitem__(key)
-        except KeyError:
-            self.__setitem__(key, 0, check=False)
-
-        return super(RequestsCounter, self).__getitem__(key)
-
-    def __setitem__(self, key, value, check=True):
-        if check:
-            self._check_trans_time()
-        super(RequestsCounter, self).__setitem__(key, value)
+    if params.case[host]["delay"] == params.checked_delay and \
+       int(destruction_record["time"]) > params.checked_delay_expected_time:
+        logger.info("Transaction overtimed: {}\n".format(json.dumps(destruction_record, indent=4)))
+        return False
+    else:
+        return True
 
 
 def do_requests(session, key, requests_number, trans_checker_params):
-    """Does specified amount of READ requests and returns distribution of these
+    """Makes specified amount of READ requests and returns distribution of these
     requests.
     """
-    requests_count = RequestsCounter(trans_checker_params)
+    requests_count = defaultdict(int)
 
     for _ in xrange(requests_number):
         result = session.read_data(key).get().pop()
+
+        if not _check_trans_time(trans_checker_params):
+            return None
+
         requests_count[result.address.host] += 1
 
     return requests_count
 
 
 def do_requests_with_retry(session, key, requests_count, retry_max, trans_checker_params):
-    """Does specified amount of requests to stabilize weights."""
+    """Makes specified amount of READ requests with retries."""
     retry_number = 0
     while retry_number < retry_max:
-        try:
-            sample = do_requests(session, key, requests_count, trans_checker_params)
-        except OvertimeError as exc:
-            logger.info("Failed to do {} requests - retrying: {}\n".format(requests_count,
-                                                                           exc.message))
+        sample = do_requests(session, key, requests_count, trans_checker_params)
+        if sample is None:
             retry_number += 1
+            logger.info("Failed to do {} requests ({}/{} try).\n".format(requests_count,
+                                                                         retry_number,
+                                                                         retry_max))
         else:
             return sample
     return None
