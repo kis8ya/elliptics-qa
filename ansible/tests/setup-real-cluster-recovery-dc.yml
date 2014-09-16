@@ -1,0 +1,9 @@
+---
+- hosts: servers
+  sudo: yes
+  tasks:
+    - name: Copy prepared data
+      shell: cp -r {{ prepared_elliptics_dir }}/. {{ elliptics_dir }}
+      ignore_errors: yes
+
+- include: ../elliptics-start.yml

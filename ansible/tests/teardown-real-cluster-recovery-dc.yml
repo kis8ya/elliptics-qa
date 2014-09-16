@@ -1,0 +1,8 @@
+---
+- include: ../elliptics-stop.yml
+
+- hosts: servers
+  sudo: yes
+  tasks:
+    - name: Wipe out elliptics artifacts
+      file: path={{ elliptics_dir }} state=absent

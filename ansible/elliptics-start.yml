@@ -1,11 +1,12 @@
 ---
 - hosts: servers
+  sudo: yes
   tasks:
     - name: Create Elliptics config file
-      template: src={{ elliptics_config }} dest={{ config }}
+      template: src={{ elliptics_config }} dest={{ elliptics_dir }}/{{ config }}
 
     - name: Start Elliptics daemon
-      command: dnet_ioserv -c {{ config }}
+      command: dnet_ioserv -c {{ elliptics_dir }}/{{ config }}
 
     - name: Wait for Elliptics to start up
       pause: seconds=10
