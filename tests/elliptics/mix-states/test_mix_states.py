@@ -3,12 +3,14 @@ import elliptics
 import socket
 import json
 
+from collections import defaultdict
 from hamcrest import assert_that, all_of, greater_than_or_equal_to, less_than_or_equal_to
+
+import mix_states_utils
 
 from test_helper import utils, network
 from test_helper.elliptics_testhelper import nodes
 from test_helper.logging_tests import logger
-
 
 # Logging file for elliptics client
 LOG_FILE = "elliptics_client.log"
@@ -17,15 +19,23 @@ DATA_LENGTH = 1
 # Networking delays
 LOW_DELAY = 0
 HIGH_DELAY = 700
+# Expected taken time (in microseconds) for READ operations on nodes with low delay
+LOW_DELAY_EXPECTED_TIME = 5000
 # A rate to calculate a confidence interval for test check
 INACCURACY_RATE = 2.0
 # A confidence interval (in percentage) for nodes with high delay
 HIGH_DELAY_PERC_MIN = 0.00
 HIGH_DELAY_PERC_MAX = 0.02
 # Number of requests to stabilize weights
-STABILIZE_REQUESTS_COUNT = 200
-# Number of requests for the test to check
-PROBE_REQUESTS_COUNT = 1000
+STABILIZE_REQUESTS_COUNT = 50
+# Number of requests in one sample for the test to check
+SAMPLE_REQUESTS_COUNT = 100
+# Number of samples
+SAMPLES_COUNT = 10
+# Number of retries for stabilizing weights
+STABILIZING_RETRY_NUMBER_MAX = 1000
+# Number of retries for collecting statistics
+STATISTICS_RETRY_NUMBER_MAX = 1000000
 
 
 @pytest.fixture(scope='module')
@@ -43,8 +53,8 @@ def create_schedulers(request, nodes):
 
 @pytest.fixture(scope='function')
 def session(nodes):
-    """Returns prepared elliptics.Session."""
-    elog = elliptics.Logger(LOG_FILE, 4)
+    """Returns prepared elliptics.Session with set `config_flags.mix_states` flag."""
+    elog = elliptics.Logger(LOG_FILE, elliptics.log_level.debug)
     ecfg = elliptics.Config()
     # Set DNET_CFG_MIX_STATES flag
     ecfg.flags |= elliptics.config_flags.mix_states
@@ -69,18 +79,6 @@ def key(session):
     key, data = utils.get_key_and_data(DATA_LENGTH, randomize_len=False)
     session.write_data(key, data).wait()
     return key
-
-
-def do_requests(session, nodes, key, requests_number):
-    """Does specified amount of READ requests."""
-    requests_count = {socket.gethostbyname(node.host): 0
-                      for node in nodes}
-
-    for _ in xrange(requests_number):
-        result = session.read_data(key).get().pop()
-        requests_count[result.address.host] += 1
-
-    return requests_count
 
 
 @pytest.fixture(scope='module', params=["------", "+-----", "+++++-"])
@@ -122,12 +120,55 @@ def case(request, nodes, create_schedulers):
 
 
 @pytest.fixture(scope='function')
-def requests_count(case, session, nodes, key):
-    """Returns statistics about numbers of requests which were send to each node."""
-    # Do some requests to stabilize weights
-    do_requests(session, nodes, key, STABILIZE_REQUESTS_COUNT)
-    # Probe requests
-    return do_requests(session, nodes, key, PROBE_REQUESTS_COUNT)
+def requests_count(case, session, key):
+    """Returns statistics about numbers of requests that were send to each node.
+
+    Collects statistics with following strategy:
+
+      1. Stabilize weights.
+      2. Make **SAMPLE_REQUESTS_COUNT** requests and store data about number of
+      requests for each node.
+        * If requests, that went to node with low delay, took more than allowed
+        time, then go back to `1`.
+      3. Collect statistics.
+
+    """
+    statistics = defaultdict(int)
+    data_samples_collected = 0
+    retry_number = 0
+    # Get iterable with logged records about desctructions READ transactions
+    # from these records we will get information about transaction taken time
+    logged_destructions = mix_states_utils.get_logged_destructions(session, LOG_FILE)
+    # Prepare parameters to check a READ-transaction time
+    trans_checker_params = mix_states_utils.TransCheckerParams(logged_destructions, case,
+                                                               LOW_DELAY, LOW_DELAY_EXPECTED_TIME)
+
+    # Stabilize weights
+    mix_states_utils.do_requests_with_retry(session, key, STABILIZE_REQUESTS_COUNT,
+                                            STABILIZING_RETRY_NUMBER_MAX, trans_checker_params)
+
+    while retry_number < STATISTICS_RETRY_NUMBER_MAX and \
+          data_samples_collected < SAMPLES_COUNT:
+        sample = mix_states_utils.do_requests_with_retry(session, key, SAMPLE_REQUESTS_COUNT,
+                                                         1, trans_checker_params)
+
+        if sample is None:
+            retry_number += 1
+            # Stabilize weights
+            mix_states_utils.do_requests_with_retry(session, key, STABILIZE_REQUESTS_COUNT,
+                                                    STABILIZING_RETRY_NUMBER_MAX,
+                                                    trans_checker_params)
+        else:
+            # Collecting statistics
+            for host, requests_count in sample.items():
+                statistics[host] += requests_count
+            data_samples_collected += 1
+
+    if data_samples_collected == SAMPLES_COUNT:
+        return statistics
+    else:
+        raise RuntimeError("Retries count ({}) exceeded while was trying to collect statistics."
+                           .format(retry_number))
 
 
 def test_mix_states(case, requests_count):
@@ -135,6 +176,12 @@ def test_mix_states(case, requests_count):
 
     When `elliptics.config_flags.mix_states` flag set, requests (for READ
     operation) will be distributed uniformly between nodes which respond faster.
+
+    Test gets requests statistics (how many READ requests went to each elliptics
+    node) and checks that this statistics corresponds to expected number of
+    requests (it must be in confidence interval, which test calculates with
+    percentage minimum and maximum of expected requests number (provided by test
+    case data)).
 
     """
     logger.info("Case: {}\nRequests count: {}\n".format(json.dumps(case, indent=4), requests_count))
