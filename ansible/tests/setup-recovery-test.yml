@@ -1,21 +1,13 @@
 ---
 - hosts: servers
+  sudo: yes
   tasks:
-    - name: Wipe out Elliptics data
-      file: path={{ item }} state=absent
-      with_items:
-        - "{{ log_dir }}"
-        - "{{ data_dir }}"
-        - "{{ hist_dir }}"
+    - name: Wipe out Elliptics directory
+      file: path={{ elliptics_dir }} state=absent
 
-    - name: Recreate necessary directories
-      file: path={{ item }} state=directory
-      with_items:
-        - "{{ log_dir }}"
-        - "{{ data_dir }}"
-        - "{{ hist_dir }}"
-
-    - name: Create data file
-      file: path={{ data_dir }}/data state=touch
+- hosts: servers
+  sudo: yes
+  roles:
+    - ../roles/create-elliptics-directories
 
 - include: ../elliptics-start.yml
