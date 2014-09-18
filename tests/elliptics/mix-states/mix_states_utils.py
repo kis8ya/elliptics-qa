@@ -12,12 +12,12 @@ def _readline(logfile):
     The line terminator is '\n'.
 
     """
-    # Read untill the line isn't empty
+    # Read until the line is present
     line = logfile.readline()
     while not line:
         time.sleep(0.1)
         line = logfile.readline()
-    # Read until the newline if found
+    # Read until the newline is found
     while line[-1] != "\n":
         line += logfile.readline()
 
