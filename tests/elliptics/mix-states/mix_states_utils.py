@@ -6,14 +6,29 @@ from collections import namedtuple, defaultdict
 from test_helper.logging_tests import logger
 
 
+def _readline(logfile):
+    """Reads and returns one line from the file.
+
+    The line terminator is '\n'.
+
+    """
+    # Read until the line is present
+    line = logfile.readline()
+    while not line:
+        time.sleep(0.1)
+        line = logfile.readline()
+    # Read until the newline is found
+    while line[-1] != "\n":
+        line += logfile.readline()
+
+    return line
+
+
 def _follow(logfile):
     """Follows a log-file in real-time like `tail -f` in Unix."""
     logfile.seek(0, 2)
     while True:
-        line = logfile.readline()
-        if not line:
-            time.sleep(0.1)
-            continue
+        line = _readline(logfile)
         yield line
 
 
