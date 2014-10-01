@@ -35,6 +35,12 @@ blob_sync: -1
 # Client parameters
 client_log: /var/log/elliptics/client.log
 
+# dnet_recovery parameters
+recovery_dc_dir: /var/tmp/dnet_recovery_dc/
+recovery_merge_dir: /var/tmp/dnet_recovery_merge/
+recovery_dc_log_path: "{{ recovery_dc_dir }}/dnet_recovery.log"
+recovery_merge_log_path: "{{ recovery_merge_dir }}/dnet_recovery.log"
+
 # Test paramaters
 check_timeout: 30
 wait_timeout: 25

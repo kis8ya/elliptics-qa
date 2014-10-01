@@ -10,6 +10,11 @@
       when: inventory_hostname_short.rsplit("-", 1)[-1]|int is odd()
 
 - hosts: servers
+  sudo: yes
+  roles:
+    - ../roles/create-elliptics-directories
+
+- hosts: servers
   vars:
     old_elliptics_config: templates/elliptics-v2.25.json.j2
   tasks:

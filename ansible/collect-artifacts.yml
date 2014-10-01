@@ -30,6 +30,20 @@
         flat=yes
       ignore_errors: yes
 
+    - name: Copy recovery dc log
+      fetch:
+        src={{ recovery_dc_log_path }}
+        dest={{ artifacts_collecting_dir }}/recovery_dc.log
+        flat=yes
+      ignore_errors: yes
+
+    - name: Copy recovery merge log
+      fetch:
+        src={{ recovery_merge_log_path }}
+        dest={{ artifacts_collecting_dir }}/recovery_merge.log
+        flat=yes
+      ignore_errors: yes
+
 - hosts: localhost
   vars:
     test_name: '{{ inventory_file.split(".")[0].rsplit("/", 1)[-1] }}'
