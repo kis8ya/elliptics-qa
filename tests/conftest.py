@@ -13,21 +13,16 @@ def pytest_addoption(parser):
                      help="Elliptics wait_timeout.")
     parser.addoption('--check-timeout', type='int', dest="check_timeout",
                      help="Elliptics check_timeout.")
-    parser.addoption('--logging-level', type='int', dest="logging_level", default=4,
-                     help="Elliptics logging_level.")
 
 
 @pytest.fixture(scope='module')
 def session(pytestconfig, nodes):
     """Returns prepared elliptics.Session."""
-    if pytestconfig.option.logging_level:
-        log_path = "/var/log/elliptics/client.log"
-        dir_path = os.path.dirname(log_path)
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-        elog = elliptics.Logger(log_path, pytestconfig.option.logging_level)
-    else:
-        elog = elliptics.Logger("/dev/stderr", pytestconfig.option.logging_level)
+    log_path = "/var/log/elliptics/client.log"
+    dir_path = os.path.dirname(log_path)
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    elog = elliptics.Logger(log_path, elliptics.log_level.debug)
 
     config = elliptics.Config()
     if pytestconfig.option.wait_timeout:

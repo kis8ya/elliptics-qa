@@ -1,0 +1,40 @@
+---
+- hosts: localhost
+  tasks:
+    - name: Remove test artifacts directories
+      local_action: file path={{ artifacts_collecting_dir }} state=absent
+
+    - name: Create test artifacts directories
+      local_action: file path={{ artifacts_collecting_dir }} state=directory
+
+- hosts: servers
+  tasks:
+    - name: Copy server logs
+      fetch:
+        src={{ log_file_path }}
+        dest={{ artifacts_collecting_dir }}/{{ ansible_hostname }}.log
+        flat=yes
+
+    - name: Copy server configs
+      fetch:
+        src={{ config_file_path }}
+        dest={{ artifacts_collecting_dir }}/{{ ansible_hostname }}.conf
+        flat=yes
+
+- hosts: clients
+  tasks:
+    - name: Copy client log
+      fetch:
+        src={{ client_log }}
+        dest={{ artifacts_collecting_dir }}/{{ ansible_hostname }}.log
+        flat=yes
+      ignore_errors: yes
+
+- hosts: localhost
+  vars:
+    test_name: '{{ inventory_file.split(".")[0].rsplit("/", 1)[-1] }}'
+  tasks:
+    - name: zip files
+      shell: >
+        cd {{ artifacts_collecting_dir }};
+        zip {{ artifacts_dir }}/test-{{ test_name }}.zip `ls ./`;

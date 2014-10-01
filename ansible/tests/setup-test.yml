@@ -10,4 +10,10 @@
   roles:
     - ../roles/create-elliptics-directories
 
+- hosts: clients
+  sudo: yes
+  tasks:
+    - name: Wipe out client log
+      file: path={{ client_log }} state=absent
+
 - include: ../elliptics-start.yml

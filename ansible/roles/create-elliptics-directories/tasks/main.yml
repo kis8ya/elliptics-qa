@@ -1,18 +1,18 @@
 ---
 - name: Create logging directories
-  file: path={{ elliptics_dir }}/{{ log_dir }} state=directory
+  file: path={{ log_dir }} state=directory
 
 - name: Create data and history directories
-  file: path={{ elliptics_dir }}/{{ item[0] }}/{{ item[1] }} state=directory
+  file: path={{ item[0] }}/{{ item[1] }} state=directory
   with_nested:
+    - ["{{ data_dir }}", "{{ hist_dir }}"]
     - >
         [{% for i in range(backends_number) %}
           {{ i }} {% if not loop.last %},{% endif %}
         {% endfor %}]
-    - ["{{ data_dir }}", "{{ hist_dir }}"]
 
 - name: Create data file
-  file: path={{ elliptics_dir }}/{{ item }}/{{ data_dir }}/data state=touch
+  file: path={{ data_dir }}/{{ item }}/data state=touch
   with_items:
     - >
         [{% for i in range(backends_number) %}

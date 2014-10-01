@@ -18,12 +18,12 @@
         src=../{{ old_elliptics_config
                   if inventory_hostname_short.rsplit("-", 1)[-1]|int is odd()
                   else elliptics_config }}
-        dest={{ elliptics_dir }}/{{ config }}
+        dest={{ config_file_path }}
 
 - hosts: servers
   tasks:
     - name: Start Elliptics daemon
-      command: dnet_ioserv -c {{ elliptics_dir }}/{{ config }}
+      command: dnet_ioserv -c {{ config_file_path }}
 
     - name: Wait for Elliptics to start up
       pause: seconds=10

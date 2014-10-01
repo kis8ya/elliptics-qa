@@ -1,5 +1,5 @@
 ---
-- include: ../elliptics-stop.yml
+- include: teardown-test.yml
 
 - hosts:
     - clients

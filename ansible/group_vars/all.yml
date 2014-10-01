@@ -5,12 +5,14 @@ eblob_version: newest
 
 # Elliptics servers parameters
 elliptics_config: templates/elliptics.json.j2
-config: elliptics.conf
 ## directories
 elliptics_dir: /mnt/elliptics
-log_dir: log
-data_dir: data
-hist_dir: history
+log_dir: "{{ elliptics_dir }}/log"
+data_dir: "{{ elliptics_dir }}/data"
+hist_dir: "{{ elliptics_dir }}/history"
+## elliptics files
+log_file_path: "{{ log_dir }}/elliptics.log"
+config_file_path: "{{ elliptics_dir }}/elliptics.conf"
 ## options section
 flags: 4
 io_thread_num: 8
@@ -30,6 +32,9 @@ backends_number: 3
 blob_flags: 6
 blob_sync: -1
 
+# Client parameters
+client_log: /var/log/elliptics/client.log
+
 # Test paramaters
 check_timeout: 30
 wait_timeout: 25
@@ -48,6 +53,6 @@ fastcgi_tmp_dir: /tmp/fastcgi
 fastcgi_config_path: /root/fastcgi_config.xml
 fastcgi_daemon_name: fastcgi-daemon2
 
-# collecting logs parameters
-collecting_logs_dir: /tmp/logs
-archive_logs_dir: /tmp/logs-archive
+# test artifacts parameters
+artifacts_collecting_dir: /tmp/artifacts-collecting
+artifacts_dir: /tmp/test-artifacts

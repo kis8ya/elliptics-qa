@@ -1,0 +1,27 @@
+---
+- hosts: servers
+  sudo: yes
+  tasks:
+    - name: Getting process id
+      shell: pgrep dnet_ioserv
+      register: pgrep
+      ignore_errors: yes
+
+    - name: Stop Elliptics daemon
+      shell: pkill dnet_ioserv
+      ignore_errors: yes
+
+    - name: Wait for Elliptics to stop
+      shell: while [ -e /proc/{{ pgrep.stdout }} ]; do sleep 0.1; done
+      register: stop_nodes
+      ignore_errors: yes
+      async: 45
+      poll: 5
+
+- include: ../collect-artifacts.yml
+
+- hosts: servers
+  tasks:
+    - name: Handle errors
+      fail: 'msg="Failed to stop Elliptics nodes: {{ stop_nodes.msg }}"'
+      when: stop_nodes.rc != 0

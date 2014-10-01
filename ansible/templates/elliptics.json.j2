@@ -9,7 +9,7 @@
 	},
 	"sink": {
 	  "type": "files",
-	  "path": "{{ elliptics_dir }}/{{ log_dir }}/elliptics.log",
+	  "path": "{{ log_file_path }}",
 	  "autoflush": true
 	}
       }
@@ -55,8 +55,8 @@
 	"backend_id": {{ backend_number }},
         "blob_flags": {{ blob_flags }},
 	"group": {{ group }},
-	"history": "{{ elliptics_dir }}/{{ backend_number }}/{{ hist_dir }}",
-	"data": "{{ elliptics_dir }}/{{ backend_number }}/{{ data_dir }}/data",
+	"history": "{{ hist_dir }}/{{ backend_number }}",
+	"data": "{{ data_dir }}/{{ backend_number }}/data",
         "sync": {{ blob_sync }},
         "blob_size": "{{ blob_size }}",
         "records_in_blob": {{ records_in_blob }}

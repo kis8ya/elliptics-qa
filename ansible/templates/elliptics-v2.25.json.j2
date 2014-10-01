@@ -1,6 +1,6 @@
 {
   "loggers": {
-    "type": "{{ elliptics_dir }}/{{ log_dir }}/elliptics.log",
+    "type": "{{ log_file_path }},
     "level": 4
   },
   "options": {
@@ -35,8 +35,8 @@
     {
       "type": "blob",
       "group": {{ group }},
-      "history": "{{ elliptics_dir }}/0/{{ hist_dir }}",
-      "data": "{{ elliptics_dir }}/0/{{ data_dir }}/data",
+      "history": "{{ hist_dir }}/0",
+      "data": "{{ data_dir }}/0/data",
       "sync": -1,
       "blob_size": "{{ blob_size }}"
     }
