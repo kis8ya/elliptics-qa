@@ -19,8 +19,3 @@
     - {role: install-elliptics-from-debs, when: packages_dir is defined}
 
     - {role: install-elliptics-from-repo, when: packages_dir is not defined}
-
-- hosts: servers
-  sudo: yes
-  roles:
-    - create-elliptics-directories
