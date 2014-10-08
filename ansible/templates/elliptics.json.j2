@@ -10,7 +10,10 @@
 	"sink": {
 	  "type": "files",
 	  "path": "{{ log_file_path }}",
-	  "autoflush": true
+	  "autoflush": true,
+	  "rotation": {
+	    "move": 0
+	  }
 	}
       }
     ]
