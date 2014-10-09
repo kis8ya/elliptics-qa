@@ -62,3 +62,5 @@ fastcgi_daemon_name: fastcgi-daemon2
 # test artifacts parameters
 artifacts_collecting_dir: /tmp/artifacts-collecting
 artifacts_dir: /tmp/test-artifacts
+backtraces_dump_dir: /tmp/elliptics
+backtraces_dump_file_path: "{{ backtraces_dump_dir }}/backtraces.dump"
