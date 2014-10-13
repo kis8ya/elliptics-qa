@@ -21,6 +21,27 @@
         dest={{ artifacts_collecting_dir }}/{{ ansible_hostname }}.conf
         flat=yes
 
+    - name: Create a file for backtraces
+      file: dest={{ backtraces_dump_dir }} state=directory
+      when: stop_nodes.get("failed", 0) == 1
+
+    - name: Dump backtraces to a file
+      shell: >
+        gdb
+        -ex "thread apply all bt"
+        -batch
+        -p {{ pidof.stdout }}
+        >
+        {{ backtraces_dump_file_path }}
+      when: stop_nodes.get("failed", 0) == 1
+      ignore_errors: yes
+
+    - name: Copy dump file with backtraces
+      fetch:
+        src={{ backtraces_dump_file_path }}
+        dest={{ artifacts_collecting_dir }}/{{ ansible_hostname }}.bt.dump
+        flat=yes
+
 - hosts: clients
   tasks:
     - name: Copy client log

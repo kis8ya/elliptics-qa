@@ -2,21 +2,24 @@
 - hosts: servers
   sudo: yes
   tasks:
-    - name: Getting process id
-      shell: pgrep dnet_ioserv
-      register: pgrep
+    - name: Get process id
+      shell: pidof dnet_ioserv
+      register: pidof
       ignore_errors: yes
 
     - name: Stop Elliptics daemon
-      shell: pkill dnet_ioserv
+      shell: kill {{ pidof.stdout }}
+      register: kill
       ignore_errors: yes
+      when: pidof.rc == 0
 
     - name: Wait for Elliptics to stop
-      shell: while [ -e /proc/{{ pgrep.stdout }} ]; do sleep 0.1; done
+      shell: while [ -e /proc/{{ pidof.stdout }} ]; do sleep 0.1; done
       register: stop_nodes
+      when: kill.get("rc", 3) == 0
       ignore_errors: yes
       async: 45
-      poll: 5
+      poll: 1
 
 - include: ../collect-artifacts.yml
 
