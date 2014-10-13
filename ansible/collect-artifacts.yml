@@ -30,7 +30,7 @@
         gdb
         -ex "thread apply all bt"
         -batch
-        -p {{ pgrep.stdout }}
+        -p {{ pidof.stdout }}
         >
         {{ backtraces_dump_file_path }}
       when: stop_nodes.get("failed", 0) == 1
