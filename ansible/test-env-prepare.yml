@@ -1,6 +1,12 @@
 ---
 - include: install-elliptics.yml
 
+- hosts: servers
+  sudo: yes
+  tasks:
+    - name: Install gdb
+      apt: pkg=gdb
+
 - hosts: clients
   sudo: yes
   tasks:
