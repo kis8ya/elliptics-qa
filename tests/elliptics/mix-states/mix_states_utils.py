@@ -60,9 +60,11 @@ TransCheckerParams = namedtuple('TransCheckerParams', ["logged_destructions",
                                                        "checked_delay_expected_time"])
 
 
-class RequestsResult(namedtuple('RequestsResult', ["result", "statistics", "failed_addr"])):
-    def __new__(cls, result=False, statistics=defaultdict(int), failed_addr=None):
-        return super(RequestsResult, cls).__new__(cls, result, statistics, failed_addr)
+class RequestsResult(object):
+    def __init__(self, result=False, statistics=None, failed_addr=None):
+        self.result = result
+        self.statistics = statistics
+        self.failed_addr = failed_addr
 
 
 def _check_trans_time(params):
