@@ -27,7 +27,7 @@ INACCURACY_RATE = 2.0
 HIGH_DELAY_PERC_MIN = 0.00
 HIGH_DELAY_PERC_MAX = 0.02
 # Number of requests to stabilize weights
-STABILIZE_REQUESTS_COUNT = 50
+STABILIZE_REQUESTS_COUNT = 100
 # Number of requests in one sample for the test to check
 SAMPLE_REQUESTS_COUNT = 100
 # Number of samples
@@ -71,6 +71,15 @@ def session(nodes):
     elliptics_session.set_groups(groups)
 
     return elliptics_session
+
+
+@pytest.fixture(scope='module')
+def addresses(nodes):
+    addresses = {}
+    for node in nodes:
+        addr = socket.gethostbyname(node.host)
+        addresses[addr] = node.group
+    return addresses
 
 
 @pytest.fixture(scope='function')
@@ -120,7 +129,7 @@ def case(request, nodes, create_schedulers):
 
 
 @pytest.fixture(scope='function')
-def requests_count(case, session, key):
+def requests_count(case, session, key, addresses):
     """Returns statistics about numbers of requests that were send to each node.
 
     Collects statistics with following strategy:
@@ -143,26 +152,33 @@ def requests_count(case, session, key):
     trans_checker_params = mix_states_utils.TransCheckerParams(logged_destructions, case,
                                                                LOW_DELAY, LOW_DELAY_EXPECTED_TIME)
 
-    # Stabilize weights
+    logger.info("Initial weights stabilizing...\n")
     mix_states_utils.do_requests_with_retry(session, key, STABILIZE_REQUESTS_COUNT,
                                             STABILIZING_RETRY_NUMBER_MAX, trans_checker_params)
 
     while retry_number < STATISTICS_RETRY_NUMBER_MAX and \
           data_samples_collected < SAMPLES_COUNT:
+        logger.info("Collect sample...\n")
         sample = mix_states_utils.do_requests_with_retry(session, key, SAMPLE_REQUESTS_COUNT,
                                                          1, trans_checker_params)
 
-        if sample is None:
-            retry_number += 1
-            # Stabilize weights
-            mix_states_utils.do_requests_with_retry(session, key, STABILIZE_REQUESTS_COUNT,
-                                                    STABILIZING_RETRY_NUMBER_MAX,
-                                                    trans_checker_params)
-        else:
+        if sample.result:
             # Collecting statistics
-            for host, requests_count in sample.items():
+            for host, requests_count in sample.statistics.items():
                 statistics[host] += requests_count
             data_samples_collected += 1
+        else:
+            retry_number += 1
+
+            logger.info("Weights stabilizing...\n")
+            stabilizing_session = session.clone()
+            stabilizing_session.set_groups([addresses[sample.failed_addr]])
+
+            mix_states_utils.do_requests_with_retry(stabilizing_session,
+                                                    key,
+                                                    STABILIZE_REQUESTS_COUNT,
+                                                    STABILIZING_RETRY_NUMBER_MAX,
+                                                    trans_checker_params)
 
     if data_samples_collected == SAMPLES_COUNT:
         return statistics
