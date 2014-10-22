@@ -60,46 +60,51 @@ TransCheckerParams = namedtuple('TransCheckerParams', ["logged_destructions",
                                                        "checked_delay_expected_time"])
 
 
+class RequestsResult(object):
+    def __init__(self, result=False, statistics=None, failed_addr=None):
+        self.result = result
+        self.statistics = statistics
+        self.failed_addr = failed_addr
+
+
 def _check_trans_time(params):
-    """Checks READ transaction time."""
+    """Checks READ transaction time and returns host of failed transaction."""
     destruction_record = next(params.logged_destructions)
     host = destruction_record["st"].split(":")[0]
-
     if params.case[host]["delay"] == params.checked_delay and \
        int(destruction_record["time"]) > params.checked_delay_expected_time:
         logger.info("Transaction overtimed: {}\n".format(json.dumps(destruction_record, indent=4)))
-        return False
+        return host
     else:
-        return True
+        return None
 
 
 def do_requests(session, key, requests_number, trans_checker_params):
     """Makes specified amount of READ requests and returns distribution of these
     requests.
     """
-    requests_count = defaultdict(int)
+    requests_statistics = defaultdict(int)
 
     for _ in xrange(requests_number):
         result = session.read_data(key).get().pop()
 
-        if not _check_trans_time(trans_checker_params):
-            return None
+        check_result = _check_trans_time(trans_checker_params)
+        if check_result:
+            return RequestsResult(False, failed_addr=check_result)
 
-        requests_count[result.address.host] += 1
+        requests_statistics[result.address.host] += 1
 
-    return requests_count
+    return RequestsResult(True, requests_statistics)
 
 
 def do_requests_with_retry(session, key, requests_count, retry_max, trans_checker_params):
     """Makes specified amount of READ requests with retries."""
-    retry_number = 0
-    while retry_number < retry_max:
-        sample = do_requests(session, key, requests_count, trans_checker_params)
-        if sample is None:
-            retry_number += 1
-            logger.info("Failed to do {} requests ({}/{} try).\n".format(requests_count,
-                                                                         retry_number,
-                                                                         retry_max))
-        else:
-            return sample
-    return None
+    retry_number = 1
+    requests_info = RequestsResult()
+    while retry_number <= retry_max and not requests_info.result:
+        logger.info("Trying to do {} requests ({}/{} try).\n".format(requests_count,
+                                                                     retry_number,
+                                                                     retry_max))
+        requests_info = do_requests(session, key, requests_count, trans_checker_params)
+        retry_number += 1
+    return requests_info
