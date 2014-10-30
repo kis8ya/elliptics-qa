@@ -1,5 +1,0 @@
-{
-    "type": "pytest",
-    "target": "system-tests/recovery-tests/dc",
-    "addopts": "{% for node in servers %} --node={{ node.host }}:{{ node.port }}:{{ node.group }}{% endfor %} --file-size=102400 --consistent-files-number=256 --inconsistent-files-number=1000 --inconsistent-files-percentage=0.33 --cache-sync-timeout={{ cache_sync_timeout }}"
-}
