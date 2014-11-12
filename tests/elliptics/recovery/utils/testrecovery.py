@@ -84,7 +84,7 @@ class AbstractTestRecovery(object):
                     "`dnet_recovery` exited with non-zero exit status code: {}\n"
                     "Running details: {}".format(recovery["exitcode"], recovery["cmd"]))
 
-    def test_taken_time(self, recovery):
+    def test_elapsed_time(self, recovery):
         """Testing that `dnet_recovery` will not take too much time."""
         assert_that(recovery["timedout"], equal_to(False),
                     "`dnet_recovery` took too long time.")
