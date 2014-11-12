@@ -1,0 +1,5 @@
+{
+    "type": "pytest",
+    "target": "elliptics/routing-table",
+    "addopts": "{% for node in servers %} --node={{ node.host }}:{{ node.port }}:{{ node.group }}{% endfor %} --backends-number=3 --check-timeout={{ check_timeout }}"
+}

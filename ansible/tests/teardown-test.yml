@@ -35,7 +35,7 @@
     - name: Wipe out client and recovery logs
       file: path={{ item }} state=absent
       with_items:
-        - "{{ client_log }}"
+        - "{{ test_logs_path }}"
         - "{{ recovery_dc_dir }}"
         - "{{ recovery_merge_dir }}"
 

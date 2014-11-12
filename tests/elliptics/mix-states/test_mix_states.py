@@ -13,7 +13,7 @@ from test_helper.elliptics_testhelper import nodes
 from test_helper.logging_tests import logger
 
 # Logging file for elliptics client
-LOG_FILE = "elliptics_client.log"
+LOG_FILE = "/var/log/elliptics_testing/elliptics_client.log"
 # Data length for key which will be used for test requests
 DATA_LENGTH = 1
 # Networking delays

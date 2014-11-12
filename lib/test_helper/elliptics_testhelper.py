@@ -92,7 +92,7 @@ class EllipticsTestHelper(elliptics.Session):
             'AddrNotExists': "No such device or address"
             })
 
-    _log_path = "/var/log/elliptics/client.log"
+    _log_path = "/var/log/elliptics_testing/client.log"
     
     DROP_RULES = ["INPUT --proto tcp --destination-port {port} --jump DROP",
                   "INPUT --proto tcp --source-port {port} --jump DROP",

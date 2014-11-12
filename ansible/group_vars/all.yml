@@ -32,8 +32,8 @@ backends_number: 3
 blob_flags: 6
 blob_sync: -1
 
-# Client parameters
-client_log: /var/log/elliptics/client.log
+# Test parameters
+test_logs_path: /var/log/elliptics_testing
 
 # dnet_recovery parameters
 recovery_dc_dir: /var/tmp/dnet_recovery_dc/
