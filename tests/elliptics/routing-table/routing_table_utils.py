@@ -95,7 +95,7 @@ def _get_routes_upper_bound(routing_entries):
 
 
 def _get_routes_lower_bound(routing_entries):
-    """Returns routes entry with upper bound ID (000000...000000)."""
+    """Returns routes entry with lower bound ID (000000...000000)."""
     lower_routing_entry = min(routing_entries, key=_routing_entry_key)
     if str(lower_routing_entry.id) == _ID_LOWER_BOUND:
         lower_bound = copy.deepcopy(lower_routing_entry)

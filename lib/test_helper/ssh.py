@@ -4,11 +4,13 @@ import os.path
 import time
 
 
-def _get_sshconfig(config_path="~/.ssh/config"):
+def _get_identityfile_from_config(host, config_path="~/.ssh/config"):
     config_full_path = os.path.abspath(os.path.expanduser(config_path))
     sshconf = paramiko.SSHConfig()
     sshconf.parse(open(config_full_path))
-    return sshconf
+    host_ssh_settings = sshconf.lookup(host)
+    private_key = host_ssh_settings["identityfile"]
+    return private_key
 
 
 def _recv_all_stderr(ssh_channel):
@@ -21,7 +23,7 @@ def _recv_all_stderr(ssh_channel):
     return stderr
 
 
-def wait_for_command(cmd, stderr):
+def _wait_for_command(cmd, stderr):
     """Wait for command to complete."""
     while not stderr.channel.exit_status_ready():
         time.sleep(0.1)
@@ -46,10 +48,15 @@ def get_sshclient(host):
     sshclient = paramiko.SSHClient()
     sshclient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    sshconf = _get_sshconfig()
-    host_ssh_settings = sshconf.lookup(host)
-    private_key = host_ssh_settings["identityfile"]
+    private_key = _get_identityfile_from_config(host)
 
     sshclient.connect(host, key_filename=private_key)
 
     return sshclient
+
+
+def exec_command(sshclient, cmd):
+    """Wrapper for `paramiko.SSHClient.exec_command`, which is doing blocking call."""
+    _, stdout, stderr = sshclient.exec_command(cmd)
+    _wait_for_command(cmd, stderr)
+    return stdout, stderr
