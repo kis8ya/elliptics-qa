@@ -1,4 +1,4 @@
-"""Utils for recovery-dc tests."""
+"""Utils for recovery tests."""
 
 import pytest
 import os
