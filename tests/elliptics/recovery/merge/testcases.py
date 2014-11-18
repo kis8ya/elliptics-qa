@@ -12,7 +12,33 @@ import copy
 
 import recovery.utils.keys
 import recovery.utils.testrecovery
-import recovery.merge.utils
+
+
+def _base_recovery_with_dump_file_option(options,
+                                         session,
+                                         nodes,
+                                         dropped_nodes,
+                                         indexes,
+                                         dump_file_path):
+    result = copy.deepcopy(recovery.utils.testrecovery.recovery_skeleton)
+
+    keys = recovery.utils.keys.get_keys_for_merge(options, session, dropped_nodes, indexes)
+
+    result["keys"]["consistent"] = keys["consistent"]
+    result["keys"]["recovered"], result["keys"]["inconsistent"] = \
+        recovery.utils.keys.split_keys_in_percentage(keys["inconsistent"],
+                                                     options.inconsistent_files_percentage)
+
+    result["recovery_indexes"] = False
+
+    node = random.choice(nodes)
+
+    result["cmd"] = ["dnet_recovery",
+                     "--remote", "{}:{}:2".format(node.host, node.port),
+                     "--groups", ','.join([str(g) for g in session.groups]),
+                     "--dump-file", dump_file_path,
+                     "merge"]
+    return result
 
 
 def default_recovery(options, session, nodes, dropped_nodes, indexes):
@@ -47,12 +73,12 @@ def recovery_with_dump_file_option(options, session, nodes, dropped_nodes, index
     """Test case for recovery with `--dump-file` option."""
     DUMP_FILE_PATH = "./dump_file"
 
-    result = recovery.merge.utils.get_recovery_with_dump_file_option(options,
-                                                                     session,
-                                                                     nodes,
-                                                                     dropped_nodes,
-                                                                     indexes,
-                                                                     DUMP_FILE_PATH)
+    result = _base_recovery_with_dump_file_option(options,
+                                                  session,
+                                                  nodes,
+                                                  dropped_nodes,
+                                                  indexes,
+                                                  DUMP_FILE_PATH)
 
     recovery.utils.keys.dump_keys_to_file(session, result["keys"]["recovered"], DUMP_FILE_PATH)
 
@@ -68,12 +94,12 @@ def recovery_with_dump_file_option_negative(options, session, nodes, dropped_nod
     NOT_EXISTENT_KEYS_PERCENTAGE = 0.33
     DUMP_FILE_PATH = "./dump_file"
 
-    result = recovery.merge.utils.get_recovery_with_dump_file_option(options,
-                                                                     session,
-                                                                     nodes,
-                                                                     dropped_nodes,
-                                                                     indexes,
-                                                                     DUMP_FILE_PATH)
+    result = _base_recovery_with_dump_file_option(options,
+                                                  session,
+                                                  nodes,
+                                                  dropped_nodes,
+                                                  indexes,
+                                                  DUMP_FILE_PATH)
 
     not_existent_keys_number = options.inconsistent_files_number * NOT_EXISTENT_KEYS_PERCENTAGE
     not_existent_keys = recovery.utils.keys.get_not_existent_keys(session, not_existent_keys_number)

@@ -65,7 +65,11 @@ def _get_testcases_items(testcases_module_name):
             yield func_name, func
 
 def get_testcases(testcases_module_name):
-    return [testcase for _, testcase in _get_testcases_items(testcases_module_name)]
+    return [testcase
+            for testcase_name, testcase in _get_testcases_items(testcases_module_name)
+            if not testcase_name.startswith("_")]
 
 def get_testcases_names(testcases_module_name):
-    return [testcase_name for testcase_name, _ in _get_testcases_items(testcases_module_name)]
+    return [testcase_name
+            for testcase_name, _ in _get_testcases_items(testcases_module_name)
+            if not testcase_name.startswith("_")]
