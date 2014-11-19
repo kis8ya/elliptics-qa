@@ -12,6 +12,7 @@ import elliptics
 from abc import ABCMeta, abstractmethod
 from hamcrest import assert_that, equal_to
 
+from test_helper import utils
 from test_helper.logging_tests import logger
 from test_helper.matchers import hasitem
 
@@ -46,7 +47,15 @@ class AbstractTestRecovery(object):
     def get_expected_keys(self, recovery, group, index, dropped):
         pass
     
-    @pytest.fixture(scope='module')
+    @pytest.fixture(scope='class')
+    def session(self, request, nodes):
+        """Returns elliptics session."""
+        return utils.create_session(nodes,
+                                    request.config.option.check_timeout,
+                                    request.config.option.wait_timeout,
+                                    request.node.name)
+
+    @pytest.fixture(scope='class')
     def indexes(self):
         """Returns randomly generated indexes."""
         indexes_count = 5
@@ -59,12 +68,12 @@ class AbstractTestRecovery(object):
         pass
 
     @abstractmethod
-    @pytest.fixture(scope='function')
+    @pytest.fixture(scope='class')
     def dropped(self):
         pass
 
     @abstractmethod
-    @pytest.fixture(scope='module')
+    @pytest.fixture(scope='class')
     def recovery(self, pytestconfig, request, session, nodes, indexes, dropped):
         recovery_result = request.param(pytestconfig.option, session, nodes, dropped, indexes)
 
