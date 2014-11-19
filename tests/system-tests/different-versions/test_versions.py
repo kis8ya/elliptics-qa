@@ -24,7 +24,7 @@ def new_nodes(pytestconfig):
 @pytest.fixture(scope='function')
 def new_client_node():
     """Returns client node for elliptics v2.26."""
-    log_path = "/var/log/elliptics/new_client.log"
+    log_path = "/var/log/elliptics_testing/new_client.log"
     dir_path = os.path.dirname(log_path)
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
@@ -61,7 +61,7 @@ def old_nodes(pytestconfig):
 @pytest.fixture(scope='function')
 def old_client_node():
     """Returns client node for elliptics v2.25."""
-    log_path = "/var/log/elliptics/old_client.log"
+    log_path = "/var/log/elliptics_testing/old_client.log"
     dir_path = os.path.dirname(log_path)
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)

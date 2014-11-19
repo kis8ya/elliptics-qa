@@ -5,3 +5,8 @@
     - ../roles/create-elliptics-directories
 
 - include: ../elliptics-start.yml
+
+- hosts: clients
+  tasks:
+    - name: Create client logging directory
+      file: path={{ test_logs_path }} state=directory

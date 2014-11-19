@@ -44,11 +44,11 @@
 
 - hosts: clients
   tasks:
-    - name: Copy client log
-      fetch:
-        src={{ client_log }}
-        dest={{ artifacts_collecting_dir }}/{{ ansible_hostname }}.log
-        flat=yes
+    - name: Copy test logs
+      synchronize:
+        mode=pull
+        src="{{ test_logs_path }}/*"
+        dest="{{ artifacts_collecting_dir }}/{{ ansible_hostname }}-test-logs/"
       ignore_errors: yes
 
     - name: Copy recovery dc log
@@ -72,4 +72,4 @@
     - name: zip files
       shell: >
         cd {{ artifacts_collecting_dir }};
-        zip {{ artifacts_dir }}/test-{{ test_name }}.zip `ls ./`;
+        zip -r {{ artifacts_dir }}/test-{{ test_name }}.zip ./;
