@@ -4,6 +4,7 @@ import random
 import json
 import copy
 import socket
+import elliptics
 
 import recovery.utils.testrecovery
 
@@ -217,3 +218,22 @@ def split_keys_in_percentage(keys, percentage):
     inconsistent_keys = dict(keys.items()[:inconsistent_keys_number])
     recovered_keys = dict(keys.items()[inconsistent_keys_number:])
     return (recovered_keys, inconsistent_keys)
+
+
+def get_not_existent_keys(session, keys_number):
+    """Returns a list of not existent keys.
+
+    These keys are not exist in elliptics cluster, which is accessible for specified
+    session.
+
+    """
+    # File's size is needed only to generate keys
+    FILE_SIZE = 1 << 20
+    keys = []
+    while len(keys) < keys_number:
+        key, _ = get_key_and_data(FILE_SIZE, randomize_len=False)
+        try:
+            session.read_data(key).wait()
+        except elliptics.NotFoundError:
+            keys.append(key)
+    return keys

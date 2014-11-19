@@ -10,7 +10,35 @@ structure see `recovery_skeleton` in `recovery.utils.testrecovery` module.
 import random
 import copy
 
-import recovery.utils.keys, recovery.utils.testrecovery
+import recovery.utils.keys
+import recovery.utils.testrecovery
+
+
+def _base_recovery_with_dump_file_option(options,
+                                         session,
+                                         nodes,
+                                         dropped_nodes,
+                                         indexes,
+                                         dump_file_path):
+    result = copy.deepcopy(recovery.utils.testrecovery.recovery_skeleton)
+
+    keys = recovery.utils.keys.get_keys_for_merge(options, session, dropped_nodes, indexes)
+
+    result["keys"]["consistent"] = keys["consistent"]
+    result["keys"]["recovered"], result["keys"]["inconsistent"] = \
+        recovery.utils.keys.split_keys_in_percentage(keys["inconsistent"],
+                                                     options.inconsistent_files_percentage)
+
+    result["recovery_indexes"] = False
+
+    node = random.choice(nodes)
+
+    result["cmd"] = ["dnet_recovery",
+                     "--remote", "{}:{}:2".format(node.host, node.port),
+                     "--groups", ','.join([str(g) for g in session.groups]),
+                     "--dump-file", dump_file_path,
+                     "merge"]
+    return result
 
 
 def default_recovery(options, session, nodes, dropped_nodes, indexes):
@@ -43,26 +71,42 @@ def recovery_with_nprocess_option(options, session, nodes, dropped_nodes, indexe
 
 def recovery_with_dump_file_option(options, session, nodes, dropped_nodes, indexes):
     """Test case for recovery with `--dump-file` option."""
-    result = copy.deepcopy(recovery.utils.testrecovery.recovery_skeleton)
+    DUMP_FILE_PATH = "./dump_file"
 
-    keys = recovery.utils.keys.get_keys_for_merge(options, session, dropped_nodes, indexes)
+    result = _base_recovery_with_dump_file_option(options,
+                                                  session,
+                                                  nodes,
+                                                  dropped_nodes,
+                                                  indexes,
+                                                  DUMP_FILE_PATH)
 
-    result["keys"]["consistent"] = keys["consistent"]
-    result["keys"]["recovered"], result["keys"]["inconsistent"] = \
-        recovery.utils.keys.split_keys_in_percentage(keys["inconsistent"],
-                                                     options.inconsistent_files_percentage)
+    recovery.utils.keys.dump_keys_to_file(session, result["keys"]["recovered"], DUMP_FILE_PATH)
 
-    result["recovery_indexes"] = False
+    return result
 
-    dump_file_path = "./dump_file"
-    recovery.utils.keys.dump_keys_to_file(session, result["keys"]["recovered"], dump_file_path)
-    node = random.choice(nodes)
 
-    result["cmd"] = ["dnet_recovery",
-                     "--remote", "{}:{}:2".format(node.host, node.port),
-                     "--groups", ','.join([str(g) for g in session.groups]),
-                     "--dump-file", dump_file_path,
-                     "merge"]
+def recovery_with_dump_file_option_negative(options, session, nodes, dropped_nodes, indexes):
+    """Negative test case for recovery with `--dump-file` option.
+
+    In a dump file there are some keys which are not exist in elliptics cluster.
+
+    """
+    NOT_EXISTENT_KEYS_PERCENTAGE = 0.33
+    DUMP_FILE_PATH = "./dump_file"
+
+    result = _base_recovery_with_dump_file_option(options,
+                                                  session,
+                                                  nodes,
+                                                  dropped_nodes,
+                                                  indexes,
+                                                  DUMP_FILE_PATH)
+
+    not_existent_keys_number = options.inconsistent_files_number * NOT_EXISTENT_KEYS_PERCENTAGE
+    not_existent_keys = recovery.utils.keys.get_not_existent_keys(session, not_existent_keys_number)
+    recovery.utils.keys.dump_keys_to_file(session,
+                                          not_existent_keys + result["keys"]["recovered"].keys(),
+                                          DUMP_FILE_PATH)
+
     return result
 
 
@@ -73,7 +117,9 @@ def recovery_with_one_node_option(options, session, nodes, dropped_nodes, indexe
     keys = recovery.utils.keys.get_keys_for_merge(options, session, dropped_nodes, indexes)
 
     # Restrict elliptics cluster: disable all backends in specified nodes
-    recovery.utils.testrecovery.disable_all_backends(session, dropped_nodes, options.backends_number)
+    recovery.utils.testrecovery.disable_all_backends(session,
+                                                     dropped_nodes,
+                                                     options.backends_number)
     node = random.choice(dropped_nodes)
 
     result["keys"]["consistent"] = keys["consistent"]
