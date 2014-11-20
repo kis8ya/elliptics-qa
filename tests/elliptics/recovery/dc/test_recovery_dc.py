@@ -59,10 +59,10 @@ import elliptics
 
 from hamcrest import assert_that, calling, raises, equal_to, is_not
 
+from test_helper import utils
 from test_helper.elliptics_testhelper import nodes
-from test_helper.utils import get_testcases, get_testcases_names, get_sha1
 
-from ..utils.testrecovery import AbstractTestRecovery
+from recovery.utils.testrecovery import AbstractTestRecovery
 
 
 class TestRecoveryDC(AbstractTestRecovery):
@@ -83,7 +83,7 @@ class TestRecoveryDC(AbstractTestRecovery):
                             "{} key is not accessible after recovery operation in node, "
                             "where it must be accessible.".format(keys_type))
                 
-                data_hash = get_sha1(async_read.get()[0].data)
+                data_hash = utils.get_sha1(async_read.get()[0].data)
 
                 assert_that(data_hash, equal_to(key),
                             "{} key's data mismatch after recovery operation.".format(keys_type))
@@ -103,7 +103,7 @@ class TestRecoveryDC(AbstractTestRecovery):
                                   if index in key_indexes])
         return expected_keys
     
-    @pytest.fixture(scope='module')
+    @pytest.fixture(scope='class')
     def dropped(self, pytestconfig, session):
         """Returns a list of dropped groups."""
         if pytestconfig.option.dropped_groups_path:
@@ -130,9 +130,9 @@ class TestRecoveryDC(AbstractTestRecovery):
 
         return session
 
-    @pytest.fixture(scope='module',
-                    params=get_testcases("recovery.dc.testcases"),
-                    ids=get_testcases_names("recovery.dc.testcases"))
+    @pytest.fixture(scope='class',
+                    params=utils.get_testcases("recovery.dc.testcases"),
+                    ids=utils.get_testcases_names("recovery.dc.testcases"))
     def recovery(self, pytestconfig, request, session, nodes, indexes, dropped):
         """Returns a structure of recovery data."""
         recovery_result = super(TestRecoveryDC, self).recovery(pytestconfig,
