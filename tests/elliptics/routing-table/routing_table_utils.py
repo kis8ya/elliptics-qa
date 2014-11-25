@@ -1,22 +1,26 @@
 import elliptics
 import socket
 import binascii
-import time
 import random
 import pytest
 import copy
 
 from abc import ABCMeta, abstractmethod
-from hamcrest import assert_that, has_items, has_length
+from hamcrest import assert_that, has_items, has_length, is_not, has_item
 
 from test_helper import ssh
-from test_helper import network
 from test_helper import utils
 
 
 _ID_LEN = 64
 _ID_UPPER_BOUND = "ff" * _ID_LEN
 _ID_LOWER_BOUND = "00" * _ID_LEN
+
+
+DROPPED_NODES_CASES = {
+    "ONE_NODE": lambda nodes: [random.choice(nodes)],
+    "ALL_NODES": lambda nodes: nodes
+    }
 
 
 class AbstractTestRoutingTableEntries(object):
@@ -49,18 +53,37 @@ class AbstractTestRoutingTableEntries(object):
     def test_contains_boundary_entries(self, session, routing_entries):
         """Checks that client node's routing table contains boundary entries.
 
-        Client node's routing table must contain boundary entries, which was inserted by
-        client node itself. These entires have following IDs:
+        Client node's routing table must contain boundary entries, which were inserted
+        by client node itself. These entries have following IDs:
 
           * 000000...000000;
           * ffffff...ffffff.
 
         """
+        if not len(routing_entries):
+            pytest.skip("unsupported test for expected routing entries")
+            
         upper_bound_entry = _get_routes_upper_bound(routing_entries)
         lower_bound_entry = _get_routes_lower_bound(routing_entries)
 
         assert_that(session.routes, has_items(upper_bound_entry, lower_bound_entry),
                     "client node doesn't have routing table entires with boundary IDs")
+
+    def test_no_boundary_entries(self, session, routing_entries):
+        """Checks that client node's routing table doesn't contain boundary entries.
+
+        If client node's routing table has no entries about any node, than it must not
+        have any boundary entry.
+
+        """
+        if len(routing_entries):
+            pytest.skip("unsupported test for expected routing entries")
+
+        actual_entries_ids = [str(entry.id) for entry in session.routes]
+
+        for entry_id in [_ID_UPPER_BOUND, _ID_LOWER_BOUND]:
+            assert_that(actual_entries_ids, is_not(has_item(entry_id)),
+                        "client node has a routing table entry with boundary ID")
 
     def test_only_necessary_entries(self, session, routing_entries):
         """Checks that client node's routing table contains only necessary entries.
@@ -106,38 +129,6 @@ def _get_routes_lower_bound(routing_entries):
         lower_bound = copy.deepcopy(upper_routing_entry)
     lower_bound.id = elliptics.Id.from_hex(_ID_LOWER_BOUND)
     return lower_bound
-
-
-def wait_stall_counter(session, node):
-    """Waits untill stall counter reaches `stall_count`."""
-    STALL_COUNT = 3
-    address = elliptics.Address(node.host, node.port, socket.AF_INET)
-
-    async_results = []
-    for _ in xrange(STALL_COUNT):
-        async_results.append(session.request_backends_status(address))
-        # Wait a bit, to count these transaction separatly for stall counter
-        time.sleep(1)
-
-    # Wait for completion of all transactions
-    for async_result in async_results:
-        try:
-            async_result.wait()
-        except elliptics.Error:
-            pass
-
-
-def drop_half_nodes(nodes, session):
-    """Disables half nodes through a firewall."""
-    dropped_nodes_count = (len(nodes) + 1) / 2
-    dropped_nodes_result = random.sample(nodes, dropped_nodes_count)
-
-    for node in dropped_nodes_result:
-        network.drop_node(node)
-        # Wait when connections to nodes will be terminated
-        wait_stall_counter(session, node)
-
-    return dropped_nodes_result
 
 
 def _str_to_ids(ids_string):

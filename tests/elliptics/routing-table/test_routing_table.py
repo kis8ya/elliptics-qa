@@ -2,14 +2,12 @@
 
 import pytest
 import random
-import time
 
 from test_helper import network
 from test_helper import utils
-from test_helper.logging_tests import logger
 
-from routing_table_utils import (get_routes_for_nodes, drop_half_nodes,
-                                 AbstractTestRoutingTableEntries)
+from routing_table_utils import (AbstractTestRoutingTableEntries, get_routes_for_nodes,
+                                 DROPPED_NODES_CASES)
 
 
 class TestAddingAtStart(AbstractTestRoutingTableEntries):
@@ -25,26 +23,29 @@ class TestAddingAtStart(AbstractTestRoutingTableEntries):
         return get_routes_for_nodes(nodes, request.config.option.backends_number)
 
 
-class TestRemovingAfterNodeDrop(AbstractTestRoutingTableEntries):
+class TestRemovingAfterNodesDrop(AbstractTestRoutingTableEntries):
     """Test case for removing routing table entries after dropping nodes."""
 
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope='class',
+                    params=DROPPED_NODES_CASES.values(),
+                    ids=DROPPED_NODES_CASES.keys())
     def dropped_nodes(self, request, nodes, session):
-        """Returns list of dropped nodes.
+        """Returns a list of dropped nodes.
 
-        This fixture drops half nodes and returns a list of these nodes. After tests, for
+        This fixture drops nodes and returns a list of these nodes. After tests, for
         this test case, the fixture resumes all dropped nodes.
 
         """
-        dropped_nodes_result = drop_half_nodes(nodes, session)
+        result_nodes = request.param(nodes)
+
+        network.drop_nodes_and_wait(result_nodes, session)
 
         def resume_nodes():
-            for node in dropped_nodes_result:
-                network.resume_node(node)
+            network.resume_nodes_and_wait(result_nodes, request.config.option.check_timeout)
 
         request.addfinalizer(resume_nodes)
 
-        return dropped_nodes_result
+        return result_nodes
 
     @pytest.fixture(scope='class')
     def routing_entries(self, request, nodes, dropped_nodes):
@@ -58,25 +59,21 @@ class TestRemovingAfterNodeDrop(AbstractTestRoutingTableEntries):
         return get_routes_for_nodes(available_nodes, request.config.option.backends_number)
 
 
-class TestAddingAfterNodeResume(AbstractTestRoutingTableEntries):
+class TestAddingAfterNodesResume(AbstractTestRoutingTableEntries):
     """Test case for adding routing table entries after resuming nodes."""
 
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope='class',
+                    params=DROPPED_NODES_CASES.values(),
+                    ids=DROPPED_NODES_CASES.keys())
     def resumed_nodes(self, request, nodes, session):
         """Returns list of resumed nodes.
 
         This fixture drops half node, then resume them and returns list of these nodes.
 
         """
-        result_nodes = drop_half_nodes(nodes, session)
-
-        for node in result_nodes:
-            network.resume_node(node)
-
-        wait_time = request.config.option.check_timeout + 1
-        logger.info("Wait {} seconds for routing table update...".format(wait_time))
-        time.sleep(wait_time)
-
+        result_nodes = request.param(nodes)
+        network.drop_nodes_and_wait(result_nodes, session)
+        network.resume_nodes_and_wait(result_nodes, request.config.option.check_timeout)
         return result_nodes
 
     @pytest.fixture(scope='class')
