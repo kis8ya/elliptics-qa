@@ -50,40 +50,30 @@ class AbstractTestRoutingTableEntries(object):
         assert_that(session.routes, has_items(*routing_entries),
                     "client node doesn't have all necessary routing table entries")
 
-    def test_contains_boundary_entries(self, session, routing_entries):
-        """Checks that client node's routing table contains boundary entries.
+    def test_boundary_entries(self, session, routing_entries):
+        """Checks boundary entries in client node's routing table.
 
-        Client node's routing table must contain boundary entries, which were inserted
-        by client node itself. These entries have following IDs:
+        If client node's routing table have any entry about any node, then it must
+        contain boundary entries, which were inserted by client node itself. If client
+        node's routing table has no entries about any node, than it must not have any
+        boundary entry. These entries have following IDs:
 
           * 000000...000000;
           * ffffff...ffffff.
 
         """
-        if not len(routing_entries):
-            pytest.skip("unsupported test for expected routing entries")
-            
-        upper_bound_entry = _get_routes_upper_bound(routing_entries)
-        lower_bound_entry = _get_routes_lower_bound(routing_entries)
-
-        assert_that(session.routes, has_items(upper_bound_entry, lower_bound_entry),
-                    "client node doesn't have routing table entires with boundary IDs")
-
-    def test_no_boundary_entries(self, session, routing_entries):
-        """Checks that client node's routing table doesn't contain boundary entries.
-
-        If client node's routing table has no entries about any node, than it must not
-        have any boundary entry.
-
-        """
         if len(routing_entries):
-            pytest.skip("unsupported test for expected routing entries")
+            upper_bound_entry = _get_routes_upper_bound(routing_entries)
+            lower_bound_entry = _get_routes_lower_bound(routing_entries)
 
-        actual_entries_ids = [str(entry.id) for entry in session.routes]
+            assert_that(session.routes, has_items(upper_bound_entry, lower_bound_entry),
+                        "client node doesn't have routing table entires with boundary IDs")
+        else:
+            actual_entries_ids = [str(entry.id) for entry in session.routes]
 
-        for entry_id in [_ID_UPPER_BOUND, _ID_LOWER_BOUND]:
-            assert_that(actual_entries_ids, is_not(has_item(entry_id)),
-                        "client node has a routing table entry with boundary ID")
+            for entry_id in [_ID_UPPER_BOUND, _ID_LOWER_BOUND]:
+                assert_that(actual_entries_ids, is_not(has_item(entry_id)),
+                            "client node has a routing table entry with boundary ID")
 
     def test_only_necessary_entries(self, session, routing_entries):
         """Checks that client node's routing table contains only necessary entries.
