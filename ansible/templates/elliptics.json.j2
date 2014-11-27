@@ -1,74 +1,78 @@
 {
-  "logger": {
-    "level": "debug",
-    "frontends": [
-      {
-	"formatter": {
-	  "type": "string",
-	  "pattern": "%(timestamp)s %(request_id)s/%(lwp)s/%(pid)s %(severity)s: %(message)s %(...L)s"
-	},
-	"sink": {
-	  "type": "files",
-	  "path": "{{ log_file_path }}",
-	  "autoflush": true,
-	  "rotation": {
-	    "move": 0
-	  }
-	}
-      }
-    ]
-  },
-  "options": {
-    "join": true,
-    "remote": [
-      {% for host in groups['servers'] %}
-        "{{ host }}:1025:2"
-        {% if not loop.last %}
-          ,
-        {% endif %}
-      {% endfor %}
-    ],
-    "address": [
-      "{{ ansible_eth0.ipv4.address }}:1025:2"
-    ],
-    "flags": {{ flags }},
-    "wait_timeout": {{ wait_timeout }},
-    "check_timeout": {{ check_timeout }},
-    "io_thread_num": {{ io_thread_num }},
-    "net_thread_num": {{ net_thread_num }},
-    "nonblocking_io_thread_num": {{ nonblocking_io_thread_num }},
-    "iterate_thread_num": {{ iterate_thread_num }},
-    "daemon": true,
-    "auth_cookie": "ellicoca",
-    {% if cocaine_config is defined %}
-      "srw_config": "{{ cocaine_config }}",
-    {% endif %}
-    "indexes_shard_count": {{ indexes_shard_count }},
-    "cache": {
-      "size": {{ cache_size }},
-      "shards": {{ cache_numbers }},
-      "pages_proportions": {{ cache_pages_proportions }},
-      "sync_timeout": {{ cache_sync_timeout }}
-    }
-  },
-  "backends": [
-    {% for backend_number in range(backends_number) %}
-      {
-	"type": "blob",
-	"backend_id": {{ backend_number }},
-        "blob_flags": {{ blob_flags }},
-	"group": {{ group }},
-	"history": "{{ hist_dir }}/{{ backend_number }}",
-	"data": "{{ data_dir }}/{{ backend_number }}/data",
-        "sync": {{ blob_sync }},
-        "blob_size": "{{ blob_size }}",
-        "records_in_blob": {{ records_in_blob }}
-      }
-      
-      {% if not loop.last %}
-      ,
-      {% endif %}
+    "logger": {
+        "level": "debug",
+        "frontends": [{
+                "formatter": {
+                    "type": "string",
+                    "pattern": "%(timestamp)s %(request_id)s/%(lwp)s/%(pid)s %(severity)s: %(message)s %(...L)s"
+                },
+                "sink": {
+                    "type": "files",
+                    "path": "{{ log_file_path }}",
+                    "autoflush": true,
+                    "rotation": {
+                        "move": 0
+                    }
+                }
+        }]
+    },
+    "options": {
+        "join": true,
+        "remote": [
+{% for host in groups['servers'] %}
+            "{{ host }}:1025:2"
+    {%- if not loop.last -%}
+        ,
+    {%- endif %}
+    {{- "\n" }}
+{%- endfor %}
+        ],
+        "address": [
+            "{{ ansible_eth0.ipv4.address }}:1025:2"
+        ],
+        "flags": {{ flags }},
+        "wait_timeout": {{ wait_timeout }},
+        "check_timeout": {{ check_timeout }},
+        "io_thread_num": {{ io_thread_num }},
+        "net_thread_num": {{ net_thread_num }},
+        "nonblocking_io_thread_num": {{ nonblocking_io_thread_num }},
+        "iterate_thread_num": {{ iterate_thread_num }},
+        "daemon": true,
+        "auth_cookie": "ellicoca",
+{% if cocaine_config is defined %}
+        "srw_config": "{{ cocaine_config }}",
+{% endif %}
+        "indexes_shard_count": {{ indexes_shard_count }},
+        "cache": {
+            "size": {{ cache_size }},
+            "shards": {{ cache_numbers }},
+            "pages_proportions": {{ cache_pages_proportions }},
+            "sync_timeout": {{ cache_sync_timeout }}
+        }
+    },
+    "backends": [
+{% for backend_number in range(backends_number) %}
+        {
+            "type": "blob",
+            "backend_id": {{ backend_number }},
+    {%- if backends_enabled is defined %}
+        {%- set node_number = groups['servers'].index(inventory_hostname) %}
 
-    {% endfor %}
-  ]
+            "enable": {{ backends_enabled[node_number][backend_number]|to_json }},
+    {%- endif %}
+
+            "blob_flags": {{ blob_flags }},
+            "group": {{ group }},
+            "history": "{{ hist_dir }}/{{ backend_number }}",
+            "data": "{{ data_dir }}/{{ backend_number }}/data",
+            "sync": {{ blob_sync }},
+            "blob_size": "{{ blob_size }}",
+            "records_in_blob": {{ records_in_blob }}
+        }
+    {%- if not loop.last -%}
+        ,
+    {%- endif %}
+
+{% endfor %}
+    ]
 }

@@ -29,6 +29,9 @@ cache_pages_proportions: [4, 2]
 blob_size: 2G
 records_in_blob: 500000
 backends_number: 3
+### You can use `backends_enabled` variable to specify **enable** option for
+### every backend: `backends_enabled[node_number][backend_number] = true|false`
+### backends_enabled: [[true, false, true]]
 blob_flags: 6
 blob_sync: -1
 

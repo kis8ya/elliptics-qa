@@ -1,0 +1,5 @@
+{
+    "type": "pytest",
+    "target": "elliptics/routing-table/test_backends.py",
+    "addopts": "{% for node in servers %} --node={{ node.host }}:{{ node.port }}:{{ node.group }}{% endfor %} --backends-number={{ backends_number }} --check-timeout={{ check_timeout }} -k 'TestAddingAtStart'"
+}

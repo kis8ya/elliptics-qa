@@ -17,10 +17,16 @@ _ID_UPPER_BOUND = "ff" * _ID_LEN
 _ID_LOWER_BOUND = "00" * _ID_LEN
 
 
-DROPPED_NODES_CASES = {
+dropped_nodes_cases = {
     "ONE_NODE": lambda nodes: [random.choice(nodes)],
     "ALL_NODES": lambda nodes: nodes
-    }
+}
+
+
+backends_cases = {
+    "ONE_BACKEND": lambda backends_number: [random.choice(xrange(backends_number))],
+    "ALL_BACKENDS": lambda backends_number: xrange(backends_number)
+}
 
 
 class AbstractTestRoutingTableEntries(object):
@@ -131,14 +137,14 @@ def _str_to_ids(ids_string):
     return ids
 
 
-def _get_routes_from_ids(node, backends_number, history_path="/mnt/elliptics/history"):
+def _get_routes_from_ids(node, backends_ids, history_path="/mnt/elliptics/history"):
     """Returns routing table entries for specified node."""
     sshclient = ssh.get_sshclient(node.host)
     sftp = sshclient.open_sftp()
     address = elliptics.Address(node.host, node.port, socket.AF_INET)
 
     routes = []
-    for backend_id in xrange(backends_number):
+    for backend_id in backends_ids:
         # Get content of ids file
         ids_path = "{}/{}/ids".format(history_path, backend_id)
         ids_file = sftp.open(ids_path)
@@ -152,9 +158,33 @@ def _get_routes_from_ids(node, backends_number, history_path="/mnt/elliptics/his
     return routes
 
 
-def get_routes_for_nodes(nodes, backends_number):
-    """Returns routing table entries for all specified nodes."""
+def _enabled_backends_ids(session, nodes):
+    """Returns enabled backends IDs for specified nodes."""
+    backends_ids = []
+    for node in nodes:
+        address = elliptics.Address(node.host, node.port, socket.AF_INET)
+        result = session.request_backends_status(address).get()[0]
+
+        backends_ids.append([backend.backend_id
+                             for backend in result.backends
+                             if backend.state])
+    return backends_ids
+
+
+def _routes_for_nodes_with_ids(nodes, backends_ids):
     routing_entries = [routing_entry
-                       for node in nodes
-                       for routing_entry in _get_routes_from_ids(node, backends_number)]
+                       for node, node_backends_ids in zip(nodes, backends_ids)
+                       for routing_entry in _get_routes_from_ids(node, node_backends_ids)]
     return routing_entries
+
+
+def routes_for_nodes_with_enabled_backends(nodes, session):
+    """Returns routing table entries for specified nodes with backends IDs."""
+    backends_ids = _enabled_backends_ids(session, nodes)
+    return _routes_for_nodes_with_ids(nodes, backends_ids)
+
+
+def routes_for_nodes(nodes, backends_number):
+    """Returns routing table entries for all specified nodes."""
+    backends_ids = [xrange(backends_number) for _ in nodes]
+    return _routes_for_nodes_with_ids(nodes, backends_ids)

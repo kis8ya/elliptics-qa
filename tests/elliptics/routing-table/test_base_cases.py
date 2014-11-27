@@ -1,4 +1,4 @@
-"""Routing table acceptance tests."""
+"""Routing table tests for base test cases."""
 
 import pytest
 import random
@@ -6,29 +6,16 @@ import random
 from test_helper import network
 from test_helper import utils
 
-from routing_table_utils import (AbstractTestRoutingTableEntries, get_routes_for_nodes,
-                                 DROPPED_NODES_CASES)
-
-
-class TestAddingAtStart(AbstractTestRoutingTableEntries):
-    """Test case for adding routing table entries at starting node."""
-
-    @pytest.fixture(scope='class')
-    def routing_entries(self, request, nodes):
-        """Returns routing table entries.
-
-        At starting node must have entries about all it remotes.
-
-        """
-        return get_routes_for_nodes(nodes, request.config.option.backends_number)
+from routing_table_utils import (AbstractTestRoutingTableEntries, routes_for_nodes,
+                                 dropped_nodes_cases)
 
 
 class TestRemovingAfterNodesDrop(AbstractTestRoutingTableEntries):
     """Test case for removing routing table entries after dropping nodes."""
 
     @pytest.fixture(scope='class',
-                    params=DROPPED_NODES_CASES.values(),
-                    ids=DROPPED_NODES_CASES.keys())
+                    params=dropped_nodes_cases.values(),
+                    ids=dropped_nodes_cases.keys())
     def dropped_nodes(self, request, nodes, session):
         """Returns a list of dropped nodes.
 
@@ -56,15 +43,15 @@ class TestRemovingAfterNodesDrop(AbstractTestRoutingTableEntries):
 
         """
         available_nodes = [node for node in nodes if node not in dropped_nodes]
-        return get_routes_for_nodes(available_nodes, request.config.option.backends_number)
+        return routes_for_nodes(available_nodes, request.config.option.backends_number)
 
 
 class TestAddingAfterNodesResume(AbstractTestRoutingTableEntries):
     """Test case for adding routing table entries after resuming nodes."""
 
     @pytest.fixture(scope='class',
-                    params=DROPPED_NODES_CASES.values(),
-                    ids=DROPPED_NODES_CASES.keys())
+                    params=dropped_nodes_cases.values(),
+                    ids=dropped_nodes_cases.keys())
     def resumed_nodes(self, request, nodes, session):
         """Returns list of resumed nodes.
 
@@ -83,7 +70,7 @@ class TestAddingAfterNodesResume(AbstractTestRoutingTableEntries):
         After resuming nodes there must be entires about all nodes in routing table.
 
         """
-        return get_routes_for_nodes(nodes, request.config.option.backends_number)
+        return routes_for_nodes(nodes, request.config.option.backends_number)
 
 
 class TestAddingAtUpdate(AbstractTestRoutingTableEntries):
@@ -109,4 +96,4 @@ class TestAddingAtUpdate(AbstractTestRoutingTableEntries):
           * entries about remotes of client node's remotes.
 
         """
-        return get_routes_for_nodes(all_nodes, request.config.option.backends_number)
+        return routes_for_nodes(all_nodes, request.config.option.backends_number)
