@@ -37,7 +37,7 @@ class TestEnableBackends(AbstractTestRoutingTableEntries):
 
 
 class TestDisableBackends(AbstractTestRoutingTableEntries):
-    """Test case for adding routing table entries after disabling backends."""
+    """Test case for removing routing table entries after disabling backends."""
 
     @pytest.fixture(scope='class',
                     params=backends_cases.values(),
@@ -51,5 +51,41 @@ class TestDisableBackends(AbstractTestRoutingTableEntries):
 
     @pytest.fixture(scope='class')
     def routing_entries(self, request, nodes, disable_backends, session):
+        """Returns routing table entries for all enabled backends."""
+        return routes_for_nodes_with_enabled_backends(nodes, session)
+
+
+class TestParallelBackendsStatesChange(AbstractTestRoutingTableEntries):
+    """Test case for parallel changing backends states.
+
+    It tests that there will not be any conflicts when backends states were
+    changed concomitantly.
+
+    """
+
+    @pytest.fixture(scope='class')
+    def reverse_backends_states(self, request, session, nodes):
+        """Reveres backends states."""
+        # Get current backends states
+        backends_states = {}
+        for node in nodes:
+            address = elliptics.Address(node.host, node.port, socket.AF_INET)
+            result = session.request_backends_status(address).get()[0]
+            backends_states[address] = result.backends
+        # Reverse states
+        async_results = []
+        for address, backends in backends_states.items():
+            for backend in backends:
+                if backend.state:
+                    result = session.disable_backend(address, backend.backend_id)
+                else:
+                    result = session.enable_backend(address, backend.backend_id)
+                async_results.append(result)
+        # Wait for operation complition
+        for async_result in async_results:
+            async_result.wait()
+
+    @pytest.fixture(scope='class')
+    def routing_entries(self, request, nodes, reverse_backends_states, session):
         """Returns routing table entries for all enabled backends."""
         return routes_for_nodes_with_enabled_backends(nodes, session)
