@@ -5,7 +5,7 @@ import elliptics
 import socket
 
 from routing_table_utils import (AbstractTestRoutingTableEntries, backends_cases,
-                                 routes_for_nodes_with_enabled_backends)
+                                 routes_for_nodes_with_enabled_backends, backends_states_cases)
 
 
 class TestAddingAtStart(AbstractTestRoutingTableEntries):
@@ -55,15 +55,12 @@ class TestDisableBackends(AbstractTestRoutingTableEntries):
         return routes_for_nodes_with_enabled_backends(nodes, session)
 
 
-class TestParallelBackendsStatesChange(AbstractTestRoutingTableEntries):
-    """Test case for parallel changing backends states.
+class TestSimultaneousChangingOfBackendsStates(AbstractTestRoutingTableEntries):
+    """Test case with simultaneous changing of backends states."""
 
-    It tests that there will not be any conflicts when backends states were
-    changed concomitantly.
-
-    """
-
-    @pytest.fixture(scope='class')
+    @pytest.fixture(scope='class',
+                    params=backends_states_cases.values(),
+                    ids=backends_states_cases.keys())
     def reverse_backends_states(self, request, session, nodes):
         """Reveres backends states."""
         # Get current backends states
@@ -71,7 +68,7 @@ class TestParallelBackendsStatesChange(AbstractTestRoutingTableEntries):
         for node in nodes:
             address = elliptics.Address(node.host, node.port, socket.AF_INET)
             result = session.request_backends_status(address).get()[0]
-            backends_states[address] = result.backends
+            backends_states[address] = request.param(result.backends)
         # Reverse states
         async_results = []
         for address, backends in backends_states.items():

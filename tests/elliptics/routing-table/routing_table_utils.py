@@ -29,6 +29,12 @@ backends_cases = {
 }
 
 
+backends_states_cases = {
+    "ALL_BUT_ONE": lambda backends: random.sample(backends, len(backends) - 1),
+    "ALL": lambda backends: backends
+}
+
+
 class AbstractTestRoutingTableEntries(object):
     """Base test class for routing table acceptance tests."""
     __metaclass__ = ABCMeta
