@@ -10,7 +10,7 @@ To run tests you need to perform following steps:
 
     git clone --recursive -b v2.26 https://github.com/kis8ya/elliptics-qa.git
 
-### 2 Dependencies
+### 2 Install dependencies
 Python packages listed in [requirements.txt](requirements.txt). You can install them with following command:
 
     sudo pip install -r requirements.txt
@@ -84,9 +84,8 @@ At first you need to provide OpenStack environment variables:
 And then you need to provide instances prefix name through `--instance-name` argument for `runner/runtests.py` script.
 
 ### 5 Run tests
-To run tests tagged as `timeouts` you need to do following commands:
+To run tests tagged as `timeouts` you need to execute following command:
 
-    elliptics-qa$ cd runner
     elliptics-qa/runner$ ./runtests.py \
     >     --configs-dir=../configs \
     >     --instance-name="my-elli-test" \
