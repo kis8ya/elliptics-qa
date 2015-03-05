@@ -2,6 +2,7 @@
 - hosts:
     - servers
     - clients
+  sudo: yes
   tasks:
     - name: Install elliptics (old version)
       apt: >
@@ -17,6 +18,7 @@
 - hosts: servers
   vars:
     old_elliptics_config: templates/elliptics-v2.25.json.j2
+  sudo: yes
   tasks:
     - name: Create Elliptics config file
       template: >
@@ -26,6 +28,7 @@
         dest={{ config_file_path }}
 
 - hosts: servers
+  sudo: yes
   tasks:
     - name: Start Elliptics daemon
       command: dnet_ioserv -c {{ config_file_path }}
@@ -35,3 +38,12 @@
 
     - name: Ensure Elliptics is running
       shell: ps ax | grep [d]net_ioserv
+
+- hosts: clients
+  sudo: yes
+  tasks:
+    - name: Create client logging directory
+      file:
+        path={{ test_logs_path }}
+        state=directory
+        owner={{ ansible_ssh_user }}
