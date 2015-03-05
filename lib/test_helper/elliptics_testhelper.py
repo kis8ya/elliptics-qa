@@ -4,11 +4,9 @@ import elliptics
 import random
 import pytest
 import os
-import subprocess
-import shlex
 import socket
 
-import utils
+from test_helper import utils
 
 # offset position (writing)
 OffsetWriteGetter = {'BEGINNING':     lambda l: 0,
@@ -49,7 +47,7 @@ def nodes(pytestconfig):
     return nodes
 
 @pytest.fixture(scope='module')
-def client(pytestconfig, nodes):
+def client(nodes):
     """Prepares default elliptics session."""
     client = EllipticsTestHelper(nodes=nodes)
     return client
@@ -72,16 +70,6 @@ def user_flags():
     user_flags = random.randint(0, utils.USER_FLAGS_MAX)
     return user_flags
 
-def set_networking_limitations(download=9216, upload=9216):
-    """Sets download/upload bandwidth limitation (9 MBit by default)."""
-    cmd = "wondershaper eth0 {down} {up}".format(down=download, up=upload)
-    subprocess.call(shlex.split(cmd))
-
-def clear_networking_limitations():
-    """Clears networking limitations."""
-    cmd = "wondershaper clear eth0"
-    subprocess.call(shlex.split(cmd))
-
 class EllipticsTestHelper(elliptics.Session):
     """ This class extend elliptics.Session class with some useful (for tests) features
     """
@@ -90,14 +78,9 @@ class EllipticsTestHelper(elliptics.Session):
             'NotExists': "No such file or directory",
             'TimeoutError': "Connection timed out",
             'AddrNotExists': "No such device or address"
-            })
+        })
 
     _log_path = "/var/log/elliptics_testing/client.log"
-    
-    DROP_RULES = ["INPUT --proto tcp --destination-port {port} --jump DROP",
-                  "INPUT --proto tcp --source-port {port} --jump DROP",
-                  "OUTPUT --proto tcp --destination-port {port} --jump DROP",
-                  "OUTPUT --proto tcp --source-port {port} --jump DROP"]
 
     def __init__(self, nodes, wait_timeout=None, check_timeout=None,
                  groups=None, config=None, logging_level=4):
@@ -132,8 +115,6 @@ class EllipticsTestHelper(elliptics.Session):
 
         self.groups = groups
 
-        self.dropped_nodes = []
-
     @staticmethod
     def get_nodes_from_args(args):
         """ Returns list of nodes from command line arguments
@@ -141,41 +122,13 @@ class EllipticsTestHelper(elliptics.Session):
         """
         return [utils.Node(*n.split(':')) for n in args]
 
-    def drop_node(self, node):
-        """ Makes a node unavailable for elliptics requests
-        """
-        for drop_rule in EllipticsTestHelper.DROP_RULES:
-            rule = drop_rule.format(port=node.port)
-            cmd = "ssh -q root@{host} iptables --append {rule}".format(host=node.host,
-                                                                       rule=rule)
-            subprocess.call(shlex.split(cmd))
-            print(cmd)
-        self.dropped_nodes.append(node)
-
-    def resume_node(self, node):
-        """ Unlocks a node for elliptics requests
-        """
-        for drop_rule in EllipticsTestHelper.DROP_RULES:
-            rule = drop_rule.format(port=node.port)
-            cmd = "ssh -q root@{host} iptables --delete {rule}".format(host=node.host,
-                                                                       rule=rule)
-            subprocess.call(shlex.split(cmd))
-            print(cmd)
-
-    def resume_all_nodes(self):
-        """ Unlocks all nodes for elliptics requests
-        """
-        for node in self.dropped_nodes:
-            self.resume_node(node)
-        self.dropped_nodes = []
-
     # Synchronous versions for Elliptics commands
     def write_data_sync(self, key, data, offset=0, chunk_size=0):
         return self.write_data(key, data, offset=offset, chunk_size=chunk_size).get()
 
     def read_data_sync(self, key, offset=0, size=0):
         return self.read_data(key, offset=offset, size=size).get()
-    
+
     def write_prepare_sync(self, key, data, offset, psize):
         return self.write_prepare(key, data, offset, psize).get()
 
@@ -187,7 +140,7 @@ class EllipticsTestHelper(elliptics.Session):
 
     def read_data_from_groups_sync(self, key, groups, offset=0):
         return self.read_data_from_groups(key, groups=groups, offset=offset).get()
-    
+
 
     def checking_inaccessibility(self, key, data_len=None):
         """ Checking that data is inaccessible

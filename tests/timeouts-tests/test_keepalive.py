@@ -8,6 +8,7 @@ from hamcrest import assert_that, calling, raises
 from test_helper.elliptics_testhelper import EllipticsTestHelper, nodes
 from test_helper.utils import get_key_and_data
 from test_helper.logging_tests import logger
+from test_helper import network
 
 @pytest.fixture(scope='module')
 def client(pytestconfig, nodes):
@@ -26,7 +27,7 @@ def drop_groups(client, nodes, group_list):
         groups_to_drop[g] = [n for n in nodes if n.group == g]
 
     for n in [i for v in groups_to_drop.values() for i in v]:
-        client.drop_node(n)
+        network.drop_node(n)
 
     return groups_to_drop
 
@@ -46,7 +47,13 @@ def unavailable_groups(request, client, nodes):
     dropped_groups = drop_groups(client, nodes, groups_to_drop)
 
     def fin():
-        client.resume_all_nodes()
+        dropped_nodes = [node for nodes in dropped_groups.values() for node in nodes]
+        for node in dropped_nodes:
+            try:
+                network.resume_node(node)
+            except RuntimeError:
+                # Ignore errors, when iptables rules was deleted already (right in a test)
+                pass
         time.sleep(60)
 
     request.addfinalizer(fin)
@@ -85,7 +92,9 @@ def test_keepalive(client, key, unavailable_groups, available_groups):
         assert_that(calling(client.read_data_from_groups_sync).with_args(key, [g]),
                     raises(elliptics.Error, client.error_info.AddrNotExists))
 
-    client.resume_all_nodes()
+    dropped_nodes = [node for nodes in unavailable_groups.values() for node in nodes]
+    for node in dropped_nodes:
+        network.resume_node(node)
     time.sleep(60)
 
     for g in client.groups:

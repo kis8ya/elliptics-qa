@@ -2,6 +2,8 @@
 import elliptics
 import socket
 import time
+import subprocess
+import shlex
 
 from test_helper import ssh
 from test_helper.logging_tests import logger
@@ -16,7 +18,7 @@ DROP_RULES = ["INPUT --proto tcp --destination-port {port} --jump DROP",
 def add_scheduler(host):
     """Adds a scheduler for a network interface on specified host."""
     sshclient = ssh.get_sshclient(host)
-    cmd = "ssh -q {} tc qdisc add dev eth0 root netem delay 0ms".format(host)
+    cmd = "sudo tc qdisc add dev eth0 root netem delay 0ms"
     ssh.exec_command(sshclient, cmd)
     logger.info("A scheduler for network emulator was added for host: {}\n".format(host))
 
@@ -24,7 +26,7 @@ def add_scheduler(host):
 def set_networking_delay(host, delay):
     """Sets delay on a network interface for specified host (in milliseconds)."""
     sshclient = ssh.get_sshclient(host)
-    cmd = "ssh -q {} tc qdisc change dev eth0 root netem delay {}ms".format(host, delay)
+    cmd = "sudo tc qdisc change dev eth0 root netem delay {}ms".format(delay)
     ssh.exec_command(sshclient, cmd)
     logger.info("A networking delay for host {} was set to {} ms\n".format(host, delay))
 
@@ -32,7 +34,7 @@ def set_networking_delay(host, delay):
 def del_scheduler(host):
     """Removes a scheduler for a network interface on specified host."""
     sshclient = ssh.get_sshclient(host)
-    cmd = "ssh -q {} tc qdisc del dev eth0 root netem delay 0ms".format(host)
+    cmd = "sudo tc qdisc del dev eth0 root netem delay 0ms"
     ssh.exec_command(sshclient, cmd)
     logger.info("A scheduler for network emulator was removed for host: {}\n".format(host))
 
@@ -42,7 +44,7 @@ def drop_node(node):
     sshclient = ssh.get_sshclient(node.host)
     for drop_rule in DROP_RULES:
         rule = drop_rule.format(port=node.port)
-        cmd = "iptables --append {rule}".format(host=node.host, rule=rule)
+        cmd = "sudo iptables --append {rule}".format(rule=rule)
 
         ssh.exec_command(sshclient, cmd)
         logger.info("{}: {}\n".format(node.host, cmd))
@@ -53,7 +55,7 @@ def resume_node(node):
     sshclient = ssh.get_sshclient(node.host)
     for drop_rule in DROP_RULES:
         rule = drop_rule.format(port=node.port)
-        cmd = "iptables --delete {rule}".format(host=node.host, rule=rule)
+        cmd = "sudo iptables --delete {rule}".format(rule=rule)
 
         ssh.exec_command(sshclient, cmd)
         logger.info("{}: {}\n".format(node.host, cmd))
@@ -96,3 +98,15 @@ def resume_nodes_and_wait(nodes, check_timeout):
     wait_time = check_timeout + 1
     logger.info("Wait {} seconds for routing table update...".format(wait_time))
     time.sleep(wait_time)
+
+
+def set_networking_limitations(download=9216, upload=9216):
+    """Sets download/upload bandwidth limitation (9 MBit by default)."""
+    cmd = "sudo wondershaper eth0 {down} {up}".format(down=download, up=upload)
+    subprocess.check_call(shlex.split(cmd))
+
+
+def clear_networking_limitations():
+    """Clears networking limitations."""
+    cmd = "sudo wondershaper clear eth0"
+    subprocess.check_call(shlex.split(cmd))

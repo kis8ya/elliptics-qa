@@ -11,6 +11,7 @@ import test_helper.elliptics_testhelper as et
 import test_helper.utils as utils
 from test_helper.elliptics_testhelper import key_and_data, nodes
 from test_helper.utils import MB
+from test_helper import network
 
 @pytest.fixture(scope='function')
 def client(pytestconfig, nodes):
@@ -29,10 +30,10 @@ def write_and_drop_node(request, client, key_and_data):
     key, data = key_and_data
     result = client.write_data_sync(key, data).pop()
     node = result.storage_address
-    client.drop_node(node)
+    network.drop_node(node)
 
     def teardown():
-        client.resume_node(node)
+        network.resume_node(node)
 
     request.addfinalizer(teardown)
     return client, key
@@ -61,7 +62,7 @@ def write_with_quorum_check(request, client, key_and_data):
     and starts data writing
     """
     # Data size depends on WAIT_TIMEOUT and networking limitations
-    # (see elliptics_testhelper.set_networking_limitations()).
+    # (see network.set_networking_limitations()).
     # Change this value depend on your network connection.
     size = 6*MB
 
@@ -70,11 +71,11 @@ def write_with_quorum_check(request, client, key_and_data):
 
     client.set_checker(elliptics.checkers.quorum)
 
-    et.set_networking_limitations()
+    network.set_networking_limitations()
     res = client.write_data(key, data)
 
     def teardown():
-        et.clear_networking_limitations()
+        network.clear_networking_limitations()
 
     request.addfinalizer(teardown)
     
@@ -88,11 +89,11 @@ def quorum_checker_positive(request, nodes, write_with_quorum_check):
     dnodes = random.sample(nodes, dnodes_count)
 
     for node in dnodes:
-        client.drop_node(node)
+        network.drop_node(node)
 
     def teardown():
         for node in dnodes:
-            client.resume_node(node)
+            network.resume_node(node)
 
     request.addfinalizer(teardown)
 
@@ -115,11 +116,11 @@ def quorum_checker_negative(request, nodes, write_with_quorum_check):
     dnodes = random.sample(nodes, dnodes_count)
     
     for node in dnodes:
-        client.drop_node(node)
+        network.drop_node(node)
 
     def teardown():
         for node in dnodes:
-            client.resume_node(node)
+            network.resume_node(node)
 
     request.addfinalizer(teardown)
 
@@ -164,10 +165,10 @@ def write_and_shuffling_off(request, client_shuffling_off, nodes, key_and_data):
     groups = random.sample(client.get_groups(), 2)
     node = filter(lambda n: n.group == groups[0], nodes)[0]
 
-    client.drop_node(node)
+    network.drop_node(node)
     
     def teardown():
-        client.resume_node(node)
+        network.resume_node(node)
 
     request.addfinalizer(teardown)
 
