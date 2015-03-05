@@ -7,6 +7,10 @@
 - include: ../elliptics-start.yml
 
 - hosts: clients
+  sudo: yes
   tasks:
     - name: Create client logging directory
-      file: path={{ test_logs_path }} state=directory
+      file:
+        path={{ test_logs_path }}
+        state=directory
+        owner={{ ansible_ssh_user }}
