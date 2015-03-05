@@ -33,6 +33,7 @@
         -p {{ pidof.stdout }}
         >
         {{ backtraces_dump_file_path }}
+      sudo: yes
       when: stop_nodes.get("failed", 0) == 1
       ignore_errors: yes
 
@@ -67,7 +68,8 @@
 
 - hosts: localhost
   tasks:
-    - name: zip files
+    - name: archive files
       shell: >
-        cd {{ artifacts_collecting_dir }};
-        zip -r {{ artifacts_dir }}/test-{{ test_name }}.zip ./;
+        tar -zcvf
+        {{ artifacts_dir }}/test-{{ test_name }}.tar.gz
+        {{ artifacts_collecting_dir }}
