@@ -19,10 +19,6 @@ You need `elliptics-client` installed on your system as well:
 
     sudo apt-get install elliptics-client
 
-For collecting test artifacts you need to install `zip`:
-
-    sudo apt-get install zip
-
 ### 3 Prepare test run config
 
 There is a useful script to generate configuration file for a test run: [elliptics-qa/create_params_file.py](create_params_file.py), but you can create a configuration file with any text editor. Configuration file has following fields:
@@ -51,8 +47,32 @@ There is a useful script to generate configuration file for a test run: [ellipti
     elliptics-qa$ cat test_parameters.json
     {"_global": {"packages_dir": "/tmp/packages"}}
 
-### 4 Provide OpenStack environment variables
-By default script for running tests use cloud resources to prepare test bench. You need to provide OpenStack environment variables for this script:
+### 4 Provide machine resources
+There are two options to provide machine resources:
+
+1. Use your own machines.
+2. Use OpenStack.
+
+#### 4.a Prepared machines
+In this case you must specify these machines in file and provide this file through `--inventory` argument for `runner/runtests.py` script. Machines must be specified in ansible inventory-like json format:
+
+    {
+        "clients": [
+            "my-elli-test-client-1.example",
+            "my-elli-test-client-2.example"
+        ],
+        "servers": [
+            "my-elli-test-server-1.example",
+            "my-elli-test-server-2.example",
+            "my-elli-test-server-3.example",
+            "my-elli-test-server-4.example",
+            "my-elli-test-server-5.example",
+            "my-elli-test-server-6.example"
+        ]
+    }
+
+#### 4.b Cloud resources
+At first you need to provide OpenStack environment variables:
 
     export OS_USERNAME="<domain login>"
     export OS_PASSWORD='<domain password>'
@@ -61,11 +81,13 @@ By default script for running tests use cloud resources to prepare test bench. Y
     export OS_REGION_NAME="<region name>"
     export OS_HOSTNAME_PREFIX="<DNS zone (starts with dot)>"
 
+And then you need to provide instances prefix name through `--instance-name` argument for `runner/runtests.py` script.
+
 ### 5 Run tests
 To run tests tagged as `timeouts` you need to do following commands:
 
     elliptics-qa$ cd runner
-    elliptics-qa/runner$ PYTHONPATH=lib:../lib ./runtests.py \
+    elliptics-qa/runner$ ./runtests.py \
     >     --configs-dir=../configs \
     >     --instance-name="my-elli-test" \
     >     --testsuite-params=../test_parameters.json \
@@ -74,4 +96,4 @@ To run tests tagged as `timeouts` you need to do following commands:
 
 `cloud-user` is a default user on cloud instances here.
 
-For more information about runtests.py arguments see `PYTHONPATH=./lib:../lib ./runtests.py --help`.
+For more information about runtests.py arguments see `runtests.py --help`.
