@@ -81,7 +81,9 @@ At first you need to provide OpenStack environment variables:
     export OS_REGION_NAME="<region name>"
     export OS_HOSTNAME_PREFIX="<DNS zone (starts with dot)>"
 
-And then you need to provide instances prefix name through `--instance-name` argument for `runner/runtests.py` script.
+And then you need to provide instances prefix name through `--instance-name` argument for `runner/runtests.py` script. After that `runner/runtests.py` will create instances before running tests.
+
+*Note: script will discovery all tests with tags from `--tag` arguments and create instances depending on collected tests.*
 
 ### 5 Run tests
 To run tests tagged as `timeouts` you need to execute following command:
