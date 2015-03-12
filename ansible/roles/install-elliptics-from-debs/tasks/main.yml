@@ -7,16 +7,24 @@
   with_fileglob:
     - "{{ packages_dir }}/*"
 
-- name: Install elliptics packages
-  shell: dpkg --force-depends --install {{ remote_packages_dir }}/*.deb
+- name: Inform apt about dependencies
+  shell: >
+    dpkg
+    --force-depends
+    --install
+    --recursive
+    {{ remote_packages_dir }}
 
-- name: Install elliptics packages dependencies
-  shell: apt-get --fix-broken --assume-yes install
+- name: Satisfy packages dependencies
+  shell: >
+    apt-get
+    --fix-broken
+    --assume-yes
+    install
 
-#TODO: remove those two duplicated tasks
-# They were added 'cos there is a package from master branch in testing/stable deb repo
-- name: Install elliptics packages
-  shell: dpkg --force-depends --install {{ remote_packages_dir }}/*.deb
-
-- name: Install elliptics packages dependencies
-  shell: apt-get --fix-broken --assume-yes install
+- name: Install packages
+  shell: >
+    dpkg
+    --install
+    --recursive
+    {{ remote_packages_dir }}
