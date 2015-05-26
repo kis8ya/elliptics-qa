@@ -81,6 +81,13 @@ def _wait_stall_counter(session, nodes):
         except elliptics.Error:
             pass
 
+    # Wait check-request from elliptics client node itself
+    # (by doing another request and waiting it)
+    try:
+        session.request_backends_status(address).wait()
+    except elliptics.Error:
+        pass
+
 
 def drop_nodes_and_wait(nodes, session):
     """Disables nodes through a firewall and wait for connections termination."""
